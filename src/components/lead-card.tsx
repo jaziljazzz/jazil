@@ -38,8 +38,20 @@ export function DueText({ lead }: { lead: Pick<Lead, "next_followup_at" | "stage
   );
 }
 
-/** Lead card: name, stage chip, coloured follow up, source icon, budget, call + WhatsApp.
- *  Swipe right → Log call, swipe left → Reschedule. */
+const AVATAR_TONES = ["#1e40af", "#0e7490", "#7c3aed", "#c026d3", "#ea580c", "#16a34a", "#0f766e", "#b45309"];
+export function LeadAvatar({ name, className }: { name: string; className?: string }) {
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return (
+    <span className={cn("grid size-10 shrink-0 place-items-center rounded-full text-[14px] font-semibold text-white", className)} style={{ background: AVATAR_TONES[h % AVATAR_TONES.length] }}>
+      {initials}
+    </span>
+  );
+}
+
+/** Lead row (LeadSquared style): avatar, name, stage + coloured follow up, source/budget/owner, call + WhatsApp.
+ *  Swipe right → Log call, swipe left → Reschedule. Render inside <LeadList>. */
 export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?: string; onLogged?: () => void }) {
   const { call, whatsapp, logCall, reschedule } = useActions();
   const [dx, setDx] = useState(0);
@@ -47,22 +59,18 @@ export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
   const moved = useRef(false);
   const budget = budgetLabel(lead.requirements);
   const open = lead.stage !== "won" && lead.stage !== "lost";
+  const meta = [SOURCE_SHORT[lead.source], budget, ownerName].filter(Boolean).join(" · ");
 
   return (
-    <div className="relative overflow-hidden rounded-[12px]">
-      {open && (
-        <div className="absolute inset-0 flex items-center justify-between px-5 text-[13px] font-semibold text-white">
-          <span className={cn("flex items-center gap-2 transition-opacity", dx > 20 ? "opacity-100" : "opacity-0")}>
-            <Phone className="size-4" /> Log call
-          </span>
-          <span className={cn("flex items-center gap-2 transition-opacity", dx < -20 ? "opacity-100" : "opacity-0")}>
-            Reschedule
-          </span>
-          <div className={cn("absolute inset-0 -z-10", dx > 0 ? "bg-success" : "bg-warning")} />
+    <div className="relative overflow-hidden">
+      {open && dx !== 0 && (
+        <div className={cn("absolute inset-0 flex items-center justify-between px-5 text-[13px] font-semibold text-white", dx > 0 ? "bg-success" : "bg-warning")}>
+          <span className="flex items-center gap-2"><Phone className="size-4" /> Log call</span>
+          <span>Reschedule</span>
         </div>
       )}
       <div
-        className="relative flex items-center gap-3 border border-line bg-surface p-3 transition-transform duration-150 rounded-[12px] touch-pan-y"
+        className="relative flex items-center gap-3 bg-surface px-3.5 py-3 transition-transform duration-150 touch-pan-y active:bg-bg"
         style={{ transform: `translateX(${dx}px)`, transitionDuration: start.current?.swiping ? "0ms" : undefined }}
         onPointerDown={(e) => {
           if (!open || e.pointerType === "mouse") return;
@@ -76,7 +84,7 @@ export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
           if (!s.swiping && Math.abs(ddx) > 12 && Math.abs(ddx) > Math.abs(e.clientY - s.y)) s.swiping = true;
           if (s.swiping) {
             moved.current = true;
-            setDx(Math.max(-120, Math.min(120, ddx)));
+            setDx(Math.max(-110, Math.min(110, ddx)));
           }
         }}
         onPointerUp={() => {
@@ -87,33 +95,35 @@ export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
         }}
         onPointerCancel={() => { start.current = null; setDx(0); }}
       >
-        <Link
-          href={`/leads/${lead.id}`}
-          className="min-w-0 flex-1"
-          onClick={(e) => { if (moved.current) e.preventDefault(); }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="truncate text-[15px] font-semibold">{lead.name}</span>
-            <SourceIcon source={lead.source} />
-            {lead.sla_breached && <Badge tone="danger">SLA</Badge>}
-            {lead.is_stale && <Badge tone="warning">Stale</Badge>}
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <StageChip stage={lead.stage} />
-            <DueText lead={lead} />
-            {budget && <span className="text-[12px] text-muted">· {budget}</span>}
-            {ownerName && <span className="text-[12px] text-muted">· {ownerName}</span>}
+        <Link href={`/leads/${lead.id}`} className="flex min-w-0 flex-1 items-start gap-3" onClick={(e) => { if (moved.current) e.preventDefault(); }}>
+          <LeadAvatar name={lead.name} />
+          <div className="min-w-0 flex-1">
+            <div className="line-clamp-2 break-words text-[15px] font-semibold leading-snug">{lead.name}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StageChip stage={lead.stage} />
+              <DueText lead={lead} />
+              {lead.sla_breached && <Badge tone="danger">SLA</Badge>}
+              {lead.is_stale && <Badge tone="warning">Stale</Badge>}
+            </div>
+            {meta && <div className="mt-1 flex items-start gap-1 text-[12px] leading-snug text-muted"><SourceIcon source={lead.source} className="mt-0.5 size-3 shrink-0" /><span>{meta}</span></div>}
           </div>
         </Link>
-        <div className="flex shrink-0 gap-1.5">
-          <button onClick={() => call(lead)} className="grid size-11 place-items-center rounded-full border border-line text-success hover:bg-success-50" aria-label="Call">
-            <Phone className="size-[18px]" />
+        <div className="flex shrink-0 flex-col gap-2">
+          <button onClick={() => call(lead)} className="grid size-9 place-items-center rounded-full bg-success-50 text-success active:scale-95" aria-label="Call">
+            <Phone className="size-[17px]" />
           </button>
-          <button onClick={() => whatsapp(lead)} className="grid size-11 place-items-center rounded-full border border-line text-[#25D366] hover:bg-success-50" aria-label="WhatsApp">
-            <MessageCircle className="size-[18px]" />
+          <button onClick={() => whatsapp(lead)} className="grid size-9 place-items-center rounded-full bg-[#25D366]/10 text-[#1DA851] active:scale-95" aria-label="WhatsApp">
+            <MessageCircle className="size-[17px]" />
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+/** Groups lead rows into one card with dividers, like a native list. */
+export function LeadList({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("divide-y divide-line overflow-hidden rounded-[14px] border border-line bg-surface", className)}>{children}</div>;
+}
+
+const SOURCE_SHORT: Record<Source, string> = { bought: "Bought", meta: "Meta", instagram: "Instagram" };

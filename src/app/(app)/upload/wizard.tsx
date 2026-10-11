@@ -137,8 +137,8 @@ export function UploadWizard({ team, batches }: { team: Profile[]; batches: { id
       <PageHeader title="Upload leads" sub="Bought lists are de-duplicated by phone and split equally across active agents" />
       <ol className="mb-5 flex gap-2 text-[12px]">
         {steps.map((s, i) => (
-          <li key={s} className={cn("flex-1 rounded-full px-3 py-1.5 text-center font-medium", step === i + 1 ? "bg-brand text-white" : step > i + 1 ? "bg-brand-50 text-brand" : "bg-black/5 text-muted")}>
-            <span className="hidden sm:inline">{i + 1}. </span>{s}
+          <li key={s} className={cn(step === i + 1 ? "flex-[3]" : "flex-1", "whitespace-nowrap rounded-full px-3 py-1.5 text-center font-medium", step === i + 1 ? "bg-brand text-white" : step > i + 1 ? "bg-brand-50 text-brand" : "bg-black/5 text-muted")}>
+            <span className={step === i + 1 ? "" : "hidden sm:inline"}>{i + 1}. </span><span className={step === i + 1 ? "" : "hidden sm:inline"}>{s}</span><span className={step === i + 1 ? "hidden" : "sm:hidden"}>{i + 1}</span>
           </li>
         ))}
       </ol>

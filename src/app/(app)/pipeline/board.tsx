@@ -40,11 +40,11 @@ export function Board({ leads, team, agent, staleDays }: { leads: Lead[]; team: 
   };
 
   return (
-    <div className="flex h-[calc(100dvh-7rem)] flex-col md:h-dvh">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 md:px-6 md:pt-6">
-        <h1 className="text-[20px] font-semibold">Pipeline</h1>
+    <div className="flex h-[calc(100dvh-7.5rem)] flex-col md:h-dvh">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3 empty:hidden md:px-6 md:pt-6">
+        <h1 className="hidden text-[20px] font-semibold md:block">Pipeline</h1>
         {isFounder && (
-          <Select className="w-44" value={agent} onChange={(e) => router.replace(e.target.value ? `/pipeline?agent=${e.target.value}` : "/pipeline")}>
+          <Select className="w-full md:w-44" value={agent} onChange={(e) => router.replace(e.target.value ? `/pipeline?agent=${e.target.value}` : "/pipeline")}>
             <option value="">All agents</option>
             {team.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </Select>
@@ -55,7 +55,7 @@ export function Board({ leads, team, agent, staleDays }: { leads: Lead[]; team: 
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-4 py-3 md:hidden">
         {STAGES.map((s) => (
           <button key={s} onClick={() => jump(s)}
-            className={cn("h-8 shrink-0 rounded-full px-3 text-[12px] font-medium", active === s ? "text-white" : "bg-surface text-muted border border-line")}
+            className={cn("h-8 shrink-0 whitespace-nowrap rounded-full px-3 text-[12px] font-medium", active === s ? "text-white" : "bg-surface text-muted border border-line")}
             style={active === s ? { background: STAGE_META[s].color } : undefined}>
             {STAGE_META[s].label} <span className="tabular opacity-80">{by[s].length}</span>
           </button>

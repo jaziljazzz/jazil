@@ -1,8 +1,8 @@
 "use client";
 
-import { Bell, Briefcase, CalendarCheck, Columns3, LayoutDashboard, LogOut, Plus, Recycle, Settings, Upload, User, Users, List } from "lucide-react";
+import { ArrowLeft, Bell, Menu, Briefcase, CalendarCheck, Columns3, LayoutDashboard, LogOut, Plus, Recycle, Settings, Upload, Users, List } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
@@ -23,6 +23,12 @@ const FOUNDER = [
   { href: "/recycle", label: "Recycle pool", icon: Recycle },
   { href: "/team", label: "Team", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
+];
+
+const TITLES: [string, string][] = [
+  ["/today", "My Day"], ["/queue", "Calls"], ["/leads/", "Lead"], ["/leads", "Leads"], ["/pipeline", "Pipeline"],
+  ["/deals", "Deals"], ["/dashboard", "Dashboard"], ["/upload", "Upload leads"], ["/recycle", "Recycle pool"],
+  ["/team", "Team"], ["/settings", "Settings"], ["/notifications", "Notifications"], ["/me", "More"],
 ];
 
 function useUnread(userId: string) {
@@ -51,6 +57,9 @@ export function AppShell({ profile, children, companyName }: { profile: Profile;
   const unread = useUnread(profile.id);
   const founder = profile.role === "founder";
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
+  const router = useRouter();
+  const isTab = ["/today", "/leads", "/pipeline", "/me"].includes(path);
+  const title = TITLES.find(([p]) => (p.endsWith("/") ? path.startsWith(p) : path === p || path.startsWith(p + "/")))?.[1] ?? companyName;
 
   const NavLink = ({ href, label, icon: Icon, badge }: { href: string; label: string; icon: typeof Bell; badge?: number }) => (
     <Link
@@ -105,36 +114,38 @@ export function AppShell({ profile, children, companyName }: { profile: Profile;
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur md:hidden">
-        <div className="flex items-center gap-2">
-          <div className="grid size-7 place-items-center rounded-md bg-brand text-[12px] font-bold text-white">A</div>
-          <span className="text-[14px] font-semibold">{companyName}</span>
+      {/* Mobile app bar */}
+      <header className="sticky top-0 z-30 bg-brand text-white shadow-sm md:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <div className="flex h-14 items-center gap-1 px-2">
+          {isTab ? (
+            <div className="ml-2 grid size-8 shrink-0 place-items-center rounded-lg bg-white/15 text-[14px] font-bold">A</div>
+          ) : (
+            <button onClick={() => (history.length > 1 ? router.back() : router.push("/today"))} className="grid size-10 shrink-0 place-items-center rounded-full active:bg-white/15" aria-label="Back">
+              <ArrowLeft className="size-[22px]" />
+            </button>
+          )}
+          <h1 className="min-w-0 flex-1 truncate px-2 text-[18px] font-semibold">{title}</h1>
+          <button onClick={addLead} className="grid size-10 place-items-center rounded-full active:bg-white/15" aria-label="Add lead">
+            <Plus className="size-[22px]" />
+          </button>
+          <Link href="/notifications" className="relative grid size-10 place-items-center rounded-full active:bg-white/15" aria-label="Notifications">
+            <Bell className="size-[22px]" />
+            {!!unread && <span className="absolute right-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger px-1 text-[10px] font-bold text-white ring-2 ring-brand">{unread > 99 ? "99+" : unread}</span>}
+          </Link>
         </div>
-        <Link href="/notifications" className="relative grid size-10 place-items-center rounded-full" aria-label="Notifications">
-          <Bell className="size-5" />
-          {!!unread && <span className="absolute right-1.5 top-1.5 grid min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">{unread}</span>}
-        </Link>
       </header>
 
-      <main className="min-w-0 flex-1 pb-28 md:pb-0">{children}</main>
-
-      {/* Floating add button (phone) */}
-      <button
-        onClick={addLead}
-        className="fixed bottom-[76px] right-4 z-30 grid size-14 place-items-center rounded-full bg-brand text-white shadow-lg shadow-brand/30 md:hidden"
-        aria-label="Add lead"
-      >
-        <Plus className="size-6" />
-      </button>
+      <main className="min-w-0 flex-1 pb-24 md:pb-0">{children}</main>
 
       {/* Bottom tab bar (phone) */}
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface md:hidden">
-        {[...MAIN, { href: "/me", label: founder ? "Team" : "Me", icon: User }].map(({ href, label, icon: Icon }) => {
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface/95 backdrop-blur md:hidden">
+        {[...MAIN, { href: "/me", label: "More", icon: Menu }].map(({ href, label, icon: Icon }) => {
           const active = isActive(href) || (href === "/me" && [...SECONDARY, ...FOUNDER].some((s) => isActive(s.href)));
           return (
-            <Link key={href} href={href} className={cn("flex h-16 flex-col items-center justify-center gap-1 text-[11px]", active ? "font-semibold text-brand" : "text-muted")}>
-              <Icon className="size-[22px]" />
+            <Link key={href} href={href} className={cn("flex h-[60px] flex-col items-center justify-center gap-0.5 text-[11px]", active ? "font-semibold text-brand" : "text-muted")}>
+              <span className={cn("grid h-7 w-14 place-items-center rounded-full transition-colors", active && "bg-brand-50")}>
+                <Icon className="size-[21px]" />
+              </span>
               {label}
             </Link>
           );

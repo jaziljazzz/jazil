@@ -84,6 +84,25 @@ async function prepareStage(leadId: string, stage: Stage, f: StageForm) {
   };
 }
 
+/** Merge loaded stage data under anything the user already typed, so a slow load never wipes their input. */
+function mergeTyped(loaded: StageForm) {
+  return (prev: StageForm | null): StageForm => {
+    if (!prev) return loaded;
+    const typed = Object.fromEntries(Object.entries(prev.req).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+    return {
+      ...loaded,
+      req: { ...loaded.req, ...typed },
+      unit: prev.unit.project ? prev.unit : loaded.unit,
+      meeting_type: prev.meeting_type || loaded.meeting_type,
+      meeting_at: prev.meeting_at || loaded.meeting_at,
+      location: prev.location || loaded.location,
+      selected_project: prev.selected_project || loaded.selected_project,
+      selected_unit: prev.selected_unit || loaded.selected_unit,
+      lost_reason: prev.lost_reason || loaded.lost_reason,
+    };
+  };
+}
+
 async function loadStageContext(lead: LeadRef): Promise<StageForm> {
   const sb = supabaseBrowser();
   const [{ data: req }, { count }, { data: l }] = await Promise.all([
@@ -208,8 +227,9 @@ function LogCallSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () =>
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (stage) loadStageContext(lead).then(setForm);
-  }, [stage, lead]);
+    if (stage) loadStageContext(lead).then((f) => setForm((prev) => mergeTyped(f)(prev)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, lead.id]);
 
   const target = stage ?? lead.stage;
   const closed = target === "won" || target === "lost";
@@ -311,7 +331,10 @@ function StageSheet({ lead, to, onClose, onDone }: { lead: LeadRef; to: Stage; o
   const [next, setNext] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { loadStageContext(lead).then(setForm); }, [lead]);
+  useEffect(() => {
+    loadStageContext(lead).then((f) => setForm((prev) => mergeTyped(f)(prev)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id]);
 
   const backwards = lead.stage !== "lost" && STAGES.indexOf(to) < STAGES.indexOf(lead.stage);
   const needsNext = stageNeedsFollowup(to);

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useActions } from "@/components/actions";
-import { budgetLabel, DueText, LeadCard, SourceIcon } from "@/components/lead-card";
+import { budgetLabel, DueText, LeadCard, LeadList, SourceIcon } from "@/components/lead-card";
 import { Badge, Button, Chip, cn, EmptyState, Input, Select, StageChip } from "@/components/ui";
 import { SOURCE_META } from "@/lib/constants";
 import { relative } from "@/lib/format";
@@ -82,7 +82,8 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
 
       <div className="min-w-0 flex-1 px-4 py-4 md:px-6 md:py-6">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h1 className="text-[20px] font-semibold">Leads</h1>
+          <h1 className="hidden text-[20px] font-semibold md:block">Leads</h1>
+          <p className="text-[13px] text-muted md:hidden">{views.find((v) => v.key === current)?.label} · {total}</p>
           <div className="flex items-center gap-2">
             {isFounder && <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="size-4" /> <span className="hidden sm:inline">Export</span></Button>}
             <Button variant="secondary" size="sm" onClick={() => setShowFilters((s) => !s)}><SlidersHorizontal className="size-4" /> <span className="hidden sm:inline">Filters</span></Button>
@@ -91,7 +92,7 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
 
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-          <Input id="lead-search" className="pl-9" placeholder="Search name, phone or email  ( / )" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input id="lead-search" className="pl-9" placeholder="Search name, phone or email" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
         {/* Smart views (phone/tablet) */}
@@ -120,16 +121,16 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
           </div>
         )}
 
-        <p className="mt-3 text-[12px] text-muted">{total} lead{total === 1 ? "" : "s"}</p>
+        <p className="mt-3 hidden text-[12px] text-muted md:block">{total} lead{total === 1 ? "" : "s"}</p>
 
         {leads.length === 0 ? (
           <EmptyState icon={<Users className="size-6" />} title="No leads in this view" />
         ) : (
           <>
             {/* Phone: cards */}
-            <div className="mt-2 space-y-2 md:hidden">
+            <LeadList className="mt-2 md:hidden">
               {leads.map((l) => <LeadCard key={l.id} lead={l} ownerName={isFounder && l.owner_id !== meId ? owners[l.owner_id ?? ""] : undefined} />)}
-            </div>
+            </LeadList>
             {/* Desktop: dense table, row opens the preview panel */}
             <div className="mt-2 hidden overflow-hidden rounded-[12px] border border-line bg-surface md:block">
               <table className="w-full text-[13px]">

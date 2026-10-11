@@ -50,7 +50,7 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
   const agentHref = (id: string) => `/dashboard?${new URLSearchParams({ ...(Object.fromEntries(Object.entries(params).filter(([, v]) => v)) as Record<string, string>), agent: id })}`;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-4 md:px-8 md:py-8">
+    <div className="mx-auto max-w-7xl px-3 py-3 md:px-8 md:py-8">
       <PageHeader title="Founder dashboard" sub={label} actions={<DateFilter preset={preset} params={params} />} />
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
@@ -114,7 +114,7 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
             </tbody>
           </table>
         </div>
-        <p className="mt-1.5 text-[12px] text-muted">Leads by stage per agent: {rows.map((r) => `${r.agent_name.split(" ")[0]} ${STAGES.map((s) => r[`st_${s}` as keyof AgentMetrics]).join("/")}`).join(" · ")} (New/Contacted/Shortlisting/Meeting/Negotiation/Won/Lost)</p>
+        <p className="mt-1.5 hidden text-[12px] text-muted md:block">Leads by stage per agent: {rows.map((r) => `${r.agent_name.split(" ")[0]} ${STAGES.map((s) => r[`st_${s}` as keyof AgentMetrics]).join("/")}`).join(" · ")} (New/Contacted/Shortlisting/Meeting/Negotiation/Won/Lost)</p>
       </section>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -123,7 +123,18 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
         <Card className="p-4">
           <SectionTitle>Lead source performance</SectionTitle>
           {sources.length ? <SourceChart data={sources} /> : <p className="text-[13px] text-muted">No leads in this period</p>}
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3 divide-y divide-line md:hidden">
+            {sources.map((s) => (
+              <div key={s.source + s.label} className="py-2.5">
+                <p className="break-words text-[13px] font-medium">{s.label}</p>
+                <p className="tabular mt-0.5 text-[12px] text-muted">
+                  {s.leads} leads · {s.won} won · <span className="text-success">{aed(s.commission, true)}</span>
+                  {s.cost ? ` · ${Number(s.won) ? `${aed(Number(s.cost) / Number(s.won), true)}/deal` : `${aed(s.cost, true)} spent`}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 hidden overflow-x-auto md:block">
             <table className="w-full whitespace-nowrap text-[12px]">
               <thead className="text-left text-muted"><tr><th className="py-1 font-medium">Source</th><th className="font-medium">Leads</th><th className="font-medium">Won</th><th className="font-medium">Commission</th><th className="font-medium">Cost / deal</th></tr></thead>
               <tbody className="tabular">

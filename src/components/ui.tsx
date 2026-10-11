@@ -106,7 +106,7 @@ export function Chip({ active, onClick, children, tone, className, count }: { ac
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 md:h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors",
+        "inline-flex h-9 md:h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px] font-medium transition-colors",
         active ? "border-brand bg-brand text-white" : toneCls || "border-line bg-surface text-ink hover:bg-bg",
         className,
       )}
@@ -155,12 +155,12 @@ export function StatCard({ label, value, sub, tone, href, onClick, active }: { l
     active && tone === "info" ? "ring-2 ring-info/40 border-info/40" : active ? "ring-2 ring-brand/30" : "";
   const inner = (
     <>
-      <div className={cn("tabular text-[28px] font-semibold leading-none", toneCls)}>{value}</div>
+      <div className={cn("tabular text-[24px] font-semibold leading-none sm:text-[28px]", toneCls)}>{value}</div>
       <div className="mt-1.5 text-[12px] text-muted">{label}</div>
       {sub && <div className="mt-1 text-[12px] text-muted">{sub}</div>}
     </>
   );
-  const cls = cn("block rounded-[12px] border border-line bg-surface p-3.5 text-left transition-shadow hover:shadow-sm", ring);
+  const cls = cn("block min-w-0 rounded-[14px] border border-line bg-surface p-3.5 text-left transition-shadow hover:shadow-sm", ring);
   if (href) return <Link href={href} className={cls}>{inner}</Link>;
   if (onClick) return <button type="button" onClick={onClick} className={cn(cls, "w-full")}>{inner}</button>;
   return <div className={cls}>{inner}</div>;
@@ -234,8 +234,8 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
 export function PageHeader({ title, sub, actions }: { title: string; sub?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-[20px] font-semibold leading-tight">{title}</h1>
+      <div className="min-w-0">
+        <h1 className="hidden text-[20px] font-semibold leading-tight md:block">{title}</h1>
         {sub && <p className="mt-0.5 text-[13px] text-muted">{sub}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

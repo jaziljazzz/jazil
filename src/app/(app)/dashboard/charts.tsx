@@ -30,7 +30,7 @@ export function Funnel({ data }: { data: { stage: Stage; count: number }[] }) {
   return (
     <div className="space-y-2">
       {data.map((d) => (
-        <div key={d.stage} className="grid grid-cols-[96px_1fr_48px] items-center gap-2 text-[13px]">
+        <div key={d.stage} className="grid grid-cols-[88px_1fr_36px] items-center gap-2 text-[13px]">
           <span className="text-muted">{STAGE_META[d.stage].label}</span>
           <div className="h-5 rounded-r bg-bg">
             <div className="h-full rounded-r transition-all" style={{ width: `${(d.count / max) * 100}%`, minWidth: d.count ? 4 : 0, background: STAGE_META[d.stage].color }} title={`${STAGE_META[d.stage].label}: ${d.count}`} />
@@ -62,14 +62,14 @@ export function CommissionChart({ data }: { data: { month: string; earned: numbe
 }
 
 export function SourceChart({ data }: { data: { label: string; leads: number; won: number }[] }) {
-  const rows = data.slice(0, 8);
+  const rows = data.slice(0, 8).map((d) => ({ ...d, label: d.label.length > 16 ? d.label.slice(0, 15) + "…" : d.label }));
   return (
     <div style={{ height: Math.max(140, rows.length * 40) }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} layout="vertical" barGap={2} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid horizontal={false} stroke="#eef0f3" />
           <XAxis type="number" tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
-          <YAxis type="category" dataKey="label" tick={AXIS} axisLine={false} tickLine={false} width={110} />
+          <YAxis type="category" dataKey="label" tick={AXIS} axisLine={false} tickLine={false} width={100} />
           <Tooltip content={<Tip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: "#6b7280" }} />
           <Bar dataKey="leads" name="Leads" fill={EARNED} radius={[0, 4, 4, 0]} maxBarSize={14} />

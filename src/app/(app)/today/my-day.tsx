@@ -4,7 +4,7 @@ import { CheckCircle2, Play, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LeadCard } from "@/components/lead-card";
+import { LeadCard, LeadList } from "@/components/lead-card";
 import { useActions } from "@/components/actions";
 import { Button, Card, cn, EmptyState, StatCard } from "@/components/ui";
 import type { Lead } from "@/lib/types";
@@ -94,10 +94,10 @@ export function MyDay({ greeting, date, overdue, today, untouched, team }: {
         ) : (
           sections.filter((s) => (filter === "all" || filter === s.key) && s.leads.length > 0).map((s) => (
             <section key={s.key}>
-              <h2 className={cn("mb-2 text-[13px] font-semibold", s.tone)}>{s.title} · {s.leads.length}</h2>
-              <div className="space-y-2">
+              <h2 className={cn("mb-2 px-1 text-[12px] font-semibold uppercase tracking-wide", s.tone)}>{s.title} · {s.leads.length}</h2>
+              <LeadList>
                 {s.leads.map((l) => <LeadCard key={l.id} lead={l} />)}
-              </div>
+              </LeadList>
             </section>
           ))
         )}

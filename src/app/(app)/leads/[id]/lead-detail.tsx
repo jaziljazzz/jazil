@@ -9,6 +9,7 @@ import { StagePath } from "@/components/stage-path";
 import { RequirementFields } from "@/components/stage-fields";
 import { Timeline } from "@/components/timeline";
 import { Badge, Button, Card, Chip, cn, ErrorText, Field, Input, Select, StageChip } from "@/components/ui";
+import { LeadAvatar } from "@/components/lead-card";
 import { MEETING_LABEL, SOURCE_META } from "@/lib/constants";
 import { aed, dueInfo, errMsg, fmtDate, fmtDateTime, relative } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -28,19 +29,20 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
 
   const header = (
     <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-[20px] font-semibold leading-tight">{lead.name}</h1>
-          <a href={`tel:${lead.phone}`} onClick={(e) => { e.preventDefault(); a.call(lead); }} className="tabular mt-0.5 block text-[14px] text-brand">{lead.phone}</a>
-          <p className="mt-0.5 text-[12px] text-muted">
-            {SOURCE_META[lead.source].label}
-            {lead.campaign ? ` · ${lead.campaign}` : ""}
-            {lead.batch?.name ? ` · ${lead.batch.name}` : ""}
-            {lead.owner?.name ? ` · ${lead.owner.name}` : ""}
-          </p>
+      <div className="flex items-start gap-3">
+        <LeadAvatar name={lead.name} className="size-12 text-[16px]" />
+        <div className="min-w-0 flex-1">
+          <h1 className="break-words text-[19px] font-semibold leading-snug">{lead.name}</h1>
+          <a href={`tel:${lead.phone}`} onClick={(e) => { e.preventDefault(); a.call(lead); }} className="tabular mt-0.5 block text-[14px] font-medium text-brand">{lead.phone}</a>
+          <div className="mt-1.5"><StageChip stage={lead.stage} /></div>
         </div>
-        <StageChip stage={lead.stage} />
       </div>
+      <p className="mt-3 break-words text-[12px] text-muted">
+        {SOURCE_META[lead.source].label}
+        {lead.campaign ? ` · ${lead.campaign}` : ""}
+        {lead.batch?.name ? ` · ${lead.batch.name}` : ""}
+        {lead.owner?.name ? ` · Owner: ${lead.owner.name}` : ""}
+      </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {lead.sla_breached && <Badge tone="danger">First call SLA missed</Badge>}
         {lead.is_stale && <Badge tone="warning">Stale</Badge>}
@@ -77,8 +79,8 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
         { label: "Note", icon: StickyNote, onClick: () => a.addNote(lead), cls: "text-ink" },
         { label: "Meeting", icon: CalendarPlus, onClick: () => a.scheduleMeeting(lead), cls: "text-[#C026D3]" },
       ].map((b) => (
-        <button key={b.label} onClick={b.onClick} className="flex flex-col items-center gap-1.5 rounded-xl py-1 text-[11px] text-muted hover:bg-black/5">
-          <span className={cn("grid size-11 place-items-center rounded-full border border-line bg-surface", b.cls)}><b.icon className="size-[18px]" /></span>
+        <button key={b.label} onClick={b.onClick} className="flex min-w-0 flex-col items-center gap-1.5 rounded-xl py-1 text-[11px] whitespace-nowrap text-ink/70 active:bg-black/5">
+          <span className={cn("grid size-12 place-items-center rounded-full border border-line bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)]", b.cls)}><b.icon className="size-5" /></span>
           {b.label}
         </button>
       ))}
@@ -87,10 +89,10 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
 
   const composer = (
     <div className="mb-4 flex gap-2">
-      <button onClick={() => a.logCall(lead)} className="h-10 flex-1 rounded-lg border border-line bg-bg px-3 text-left text-[13px] text-muted hover:border-brand/40">Log a call, note or meeting…</button>
-      <Chip onClick={() => a.logCall(lead)}>Call</Chip>
-      <Chip onClick={() => a.addNote(lead)} className="hidden sm:inline-flex">Note</Chip>
-      <Chip onClick={() => a.scheduleMeeting(lead)} className="hidden sm:inline-flex">Meeting</Chip>
+      <button onClick={() => a.logCall(lead)} className="h-11 min-w-0 flex-1 truncate rounded-lg border border-line bg-bg px-3 text-left text-[13px] text-muted hover:border-brand/40 md:h-10">Log a call, note or meeting…</button>
+      <Chip onClick={() => a.logCall(lead)} className="hidden md:inline-flex">Call</Chip>
+      <Chip onClick={() => a.addNote(lead)} className="hidden md:inline-flex">Note</Chip>
+      <Chip onClick={() => a.scheduleMeeting(lead)} className="hidden md:inline-flex">Meeting</Chip>
     </div>
   );
 
@@ -102,29 +104,29 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-6">
-      <button onClick={() => history.length > 1 ? history.back() : null} className="mb-3 flex items-center gap-1 text-[13px] text-muted">
+    <div className="mx-auto max-w-7xl px-3 pb-20 pt-3 md:px-6 md:py-6">
+      <button onClick={() => history.length > 1 ? history.back() : null} className="mb-3 hidden items-center gap-1 text-[13px] text-muted md:flex">
         <ArrowLeft className="size-4" /> Back
       </button>
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_300px]">
         {/* Left: header + actions */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-3 md:space-y-4">
           {header}
           {actions}
-          {open && lead.stage !== "new" && (
+          {open && (lead.stage === "meeting" || lead.stage === "negotiation") && (
             <Button variant="success" className="w-full" onClick={() => a.markWon(lead)}><Handshake className="size-4" /> Mark Won</Button>
           )}
           <div className="hidden xl:hidden lg:block"><SidePanel lead={lead} meetings={meetings} deals={deals} /></div>
         </div>
 
         {/* Middle: stage path + tabs */}
-        <div className="min-w-0 space-y-4">
-          <Card className="p-3"><StagePath stage={lead.stage} onPick={(s) => a.changeStage(lead, s)} disabled={lead.stage === "won" && !a.isFounder} /></Card>
+        <div className="min-w-0 space-y-3 md:space-y-4">
+          <Card className="p-4 md:p-3"><StagePath stage={lead.stage} onPick={(s) => a.changeStage(lead, s)} disabled={lead.stage === "won" && !a.isFounder} /></Card>
           <Card>
-            <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-line px-2">
+            <div className="no-scrollbar flex overflow-x-auto border-b border-line px-1">
               {tabs.map((t) => (
                 <button key={t.key} onClick={() => setTab(t.key)}
-                  className={cn("h-11 shrink-0 border-b-2 px-3 text-[13px] font-medium", tab === t.key ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink")}>
+                  className={cn("h-12 flex-1 shrink-0 whitespace-nowrap border-b-2 px-2.5 text-[13px] font-medium md:px-3", tab === t.key ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink")}>
                   {t.label}
                 </button>
               ))}
@@ -133,14 +135,26 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
               {tab === "timeline" && <>{composer}<Timeline activities={activities} /></>}
               {tab === "requirement" && <RequirementTab lead={lead} requirement={requirement} />}
               {tab === "shortlist" && <ShortlistTab lead={lead} units={units} />}
-              {tab === "details" && <DetailsTab lead={lead} meetings={meetings} deals={deals} />}
+              {tab === "details" && (
+                <>
+                  <div className="mb-5 lg:hidden"><SidePanel lead={lead} meetings={meetings} deals={deals} /></div>
+                  <DetailsTab lead={lead} meetings={meetings} deals={deals} />
+                </>
+              )}
             </div>
           </Card>
-          <div className="lg:hidden"><SidePanel lead={lead} meetings={meetings} deals={deals} /></div>
         </div>
 
         {/* Right: next follow up, meetings, deal (desktop) */}
         <div className="hidden xl:block"><SidePanel lead={lead} meetings={meetings} deals={deals} /></div>
+      </div>
+
+      {/* Phone: primary action pinned in thumb reach, above the tab bar */}
+      <div className="fixed inset-x-0 bottom-[60px] z-20 border-t border-line bg-surface/95 px-3 py-2 backdrop-blur md:hidden" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="flex gap-2">
+          <Button size="lg" className="flex-1" onClick={() => a.logCall(lead)}><PhoneCall className="size-4" /> Log call</Button>
+          {open && <Button variant="secondary" size="lg" className="shrink-0" onClick={() => a.reschedule(lead)}>Reschedule</Button>}
+        </div>
       </div>
     </div>
   );
