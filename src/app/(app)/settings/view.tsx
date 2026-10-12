@@ -158,9 +158,9 @@ export function SettingsView({ settings, developers, campaigns, welcome }: {
 
       <PushCard className="border border-line" />
 
-      <Link href="/settings/integrations" className="flex items-center justify-between rounded-[12px] border border-line bg-surface p-4">
+      <Link href="/connectors" className="flex items-center justify-between rounded-[12px] border border-line bg-surface p-4">
         <div>
-          <p className="text-[15px] font-semibold">Integrations</p>
+          <p className="text-[15px] font-semibold">Connectors</p>
           <p className="text-[12px] text-muted">Meta Lead Ads, WhatsApp summaries</p>
         </div>
         <ChevronRight className="size-5 text-muted" />

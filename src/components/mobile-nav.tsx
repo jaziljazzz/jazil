@@ -2,7 +2,7 @@
 
 import {
   ArrowLeft, Bell, Briefcase, CalendarCheck, ChevronDown, ChevronRight, Columns3, LayoutDashboard, List, LogOut, Menu,
-  Recycle, Search, Settings, SlidersHorizontal, Star, Upload, UserPlus, Users, X,
+  Plug, Recycle, Search, Settings, SlidersHorizontal, Star, Upload, UserPlus, Users, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,7 +20,7 @@ import { Avatar, cn } from "./ui";
 const TITLES: [string, string][] = [
   ["/today", "My Day"], ["/queue", "Calls"], ["/leads/", "Lead Details"], ["/leads", "Lead List"], ["/pipeline", "Pipeline"],
   ["/deals", "Deals"], ["/dashboard", "Dashboard"], ["/upload", "Upload Leads"], ["/recycle", "Recycle Pool"],
-  ["/team", "Team"], ["/settings", "Settings"], ["/notifications", "Notifications"], ["/me", "Menu"],
+  ["/team", "Team"], ["/settings", "Settings"], ["/connectors", "Connectors"], ["/notifications", "Notifications"], ["/me", "Menu"],
 ];
 
 const TABS = [
@@ -141,6 +141,7 @@ function Drawer({ profile, unread, starredCount, onClose }: { profile: Profile; 
       { href: "/upload", label: "Upload", icon: Upload },
       { href: "/recycle", label: "Recycle", icon: Recycle },
       { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/connectors", label: "Connectors", icon: Plug },
     ] : []),
   ];
 

@@ -2,6 +2,13 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export interface Integrations {
+  meta_app_id: string | null;
+  meta_login_config_id: string | null;
+  meta_page_name: string | null;
+  meta_user_name: string | null;
+  meta_connected_at: string | null;
+  meta_last_sync_at: string | null;
+  meta_pages_pending: { id: string; name: string; access_token: string }[] | null;
   meta_page_id: string | null;
   meta_page_token: string | null;
   meta_app_secret: string | null;
@@ -19,6 +26,13 @@ export async function getIntegrations(): Promise<Integrations> {
   const { data } = await supabaseAdmin().from("integrations").select("*").eq("id", 1).single();
   const d = (data ?? {}) as Partial<Integrations>;
   return {
+    meta_app_id: d.meta_app_id || process.env.META_APP_ID || null,
+    meta_login_config_id: d.meta_login_config_id || process.env.META_LOGIN_CONFIG_ID || null,
+    meta_page_name: d.meta_page_name ?? null,
+    meta_user_name: d.meta_user_name ?? null,
+    meta_connected_at: d.meta_connected_at ?? null,
+    meta_last_sync_at: d.meta_last_sync_at ?? null,
+    meta_pages_pending: d.meta_pages_pending ?? null,
     meta_page_id: d.meta_page_id ?? null,
     meta_page_token: d.meta_page_token || process.env.META_PAGE_ACCESS_TOKEN || null,
     meta_app_secret: d.meta_app_secret || process.env.META_APP_SECRET || null,
@@ -32,7 +46,7 @@ export async function getIntegrations(): Promise<Integrations> {
   };
 }
 
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = process.env.META_GRAPH_URL || "https://graph.facebook.com/v21.0";
 
 /** Sends an approved WhatsApp template with body parameters {{1}}, {{2}}, … */
 export async function sendWaTemplate(cfg: Integrations, to: string, template: string, params: string[]) {

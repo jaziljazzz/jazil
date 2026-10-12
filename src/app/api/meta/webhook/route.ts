@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getIntegrations } from "@/lib/server/integrations";
+import { getIntegrations, GRAPH } from "@/lib/server/integrations";
+import { leadFromFields } from "@/lib/server/meta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,16 +15,6 @@ export async function GET(req: NextRequest) {
     return new NextResponse(p.get("hub.challenge") ?? "", { status: 200 });
   }
   return new NextResponse("Forbidden", { status: 403 });
-}
-
-type Field = { name: string; values: string[] };
-
-function pick(fields: Field[], ...keys: string[]) {
-  for (const k of keys) {
-    const f = fields.find((x) => x.name.toLowerCase() === k || x.name.toLowerCase().includes(k));
-    if (f?.values?.[0]) return f.values[0];
-  }
-  return "";
 }
 
 export async function POST(req: NextRequest) {
@@ -49,14 +40,10 @@ export async function POST(req: NextRequest) {
       if (change.field !== "leadgen") continue;
       const leadgenId = change.value?.leadgen_id;
       if (!leadgenId) continue;
-      const res = await fetch(`https://graph.facebook.com/v21.0/${leadgenId}?fields=field_data,campaign_name,ad_name,form_id,created_time&access_token=${encodeURIComponent(token)}`);
+      const res = await fetch(`${GRAPH}/${leadgenId}?fields=field_data,campaign_name,ad_name,form_id,created_time&access_token=${encodeURIComponent(token)}`);
       if (!res.ok) { results.push({ leadgenId, error: await res.text() }); continue; }
       const lead = await res.json();
-      const fields: Field[] = lead.field_data ?? [];
-      const name = pick(fields, "full_name", "name") || [pick(fields, "first_name"), pick(fields, "last_name")].filter(Boolean).join(" ") || "Meta lead";
-      const phone = pick(fields, "phone_number", "phone", "mobile", "whatsapp");
-      const email = pick(fields, "email");
-      const extras = fields.filter((f) => !/name|phone|email|mobile/i.test(f.name)).map((f) => `${f.name.replace(/_/g, " ")}: ${f.values.join(", ")}`).join("\n");
+      const { name, phone, email, extras } = leadFromFields(lead.field_data ?? []);
       const { data, error } = await admin.rpc("ingest_meta_lead", {
         p_name: name, p_phone: phone, p_email: email || null,
         p_campaign: lead.campaign_name ?? change.value?.campaign_id ?? null, p_ad_name: lead.ad_name ?? null, p_note: extras || null,

@@ -24,7 +24,7 @@ const FOUNDER = [
   { href: "/recycle", label: "Recycle pool", icon: Recycle },
   { href: "/team", label: "Team", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/settings/integrations", label: "Integrations", icon: Plug },
+  { href: "/connectors", label: "Connectors", icon: Plug },
 ];
 
 function useUnread(userId: string) {
@@ -52,7 +52,7 @@ export function AppShell({ profile, children, companyName }: { profile: Profile;
   const { addLead } = useActions();
   const unread = useUnread(profile.id);
   const founder = profile.role === "founder";
-  const isActive = (href: string) => path === href || (path.startsWith(href + "/") && !(href === "/settings" && path.startsWith("/settings/integrations")));
+  const isActive = (href: string) => path === href || path.startsWith(href + "/");
 
   const NavLink = ({ href, label, icon: Icon, badge }: { href: string; label: string; icon: typeof Bell; badge?: number }) => (
     <Link
