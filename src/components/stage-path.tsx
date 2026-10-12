@@ -79,7 +79,7 @@ export function StagePath({ stage, onPick, disabled }: { stage: Stage; onPick: (
           </button>
         </div>
         <p className="mt-1.5 text-[12px] text-muted">
-          Stage {stage === "lost" ? "—" : idx + 1} of 7
+          Stage {stage === "lost" ? "—" : idx + 1} of 6
           {nextStage && <> · next: <button className="font-medium text-brand" onClick={() => onPick(nextStage)} disabled={disabled}>{STAGE_META[nextStage].label}</button> ({STAGE_META[nextStage].next})</>}
         </p>
       </div>

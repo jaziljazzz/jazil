@@ -33,7 +33,7 @@ function DateFilter({ preset, params }: { preset: string; params: Record<string,
 }
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
-const mins = (m: number | null) => (m === null || m === undefined ? "—" : m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(1)}h`);
+const mins = (m: number | null) => (m === null || m === undefined || Number(m) < 0 ? "—" : m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(1)}h`);
 
 export function FounderDashboard({ preset, label, params, rows, teamOverdue, funnel, sources, commission, rejections, overdueDeals, recycleCount, slaToday }: {
   preset: string; label: string; params: Record<string, string | undefined>; rows: AgentMetrics[]; teamOverdue: number;

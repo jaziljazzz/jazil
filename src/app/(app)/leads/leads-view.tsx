@@ -182,10 +182,10 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
                     <th className="px-3 py-2 font-medium">Name</th>
                     <th className="px-3 py-2 font-medium">Stage</th>
                     <th className="px-3 py-2 font-medium">Next follow up</th>
-                    <th className="hidden px-3 py-2 font-medium xl:table-cell">Budget</th>
-                    <th className="px-3 py-2 font-medium">Source</th>
+                    {!params.preview && <th className="hidden px-3 py-2 font-medium xl:table-cell">Budget</th>}
+                    {!params.preview && <th className="px-3 py-2 font-medium">Source</th>}
                     {isFounder && <th className="px-3 py-2 font-medium">Owner</th>}
-                    <th className="px-3 py-2 font-medium">Last activity</th>
+                    {!params.preview && <th className="px-3 py-2 font-medium">Last activity</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -204,10 +204,10 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
                       </td>
                       <td className="px-3 py-2.5"><StageChip stage={l.stage} /></td>
                       <td className="px-3 py-2.5"><DueText lead={l} /></td>
-                      <td className="hidden px-3 py-2.5 text-muted xl:table-cell">{budgetLabel(l.requirements) ?? "—"}</td>
-                      <td className="px-3 py-2.5"><span className="inline-flex items-center gap-1.5 text-muted"><SourceIcon source={l.source} />{l.source === "meta" && l.campaign ? l.campaign : SOURCE_META[l.source].short}</span></td>
+                      {!params.preview && <td className="hidden px-3 py-2.5 text-muted xl:table-cell">{budgetLabel(l.requirements) ?? "—"}</td>}
+                      {!params.preview && <td className="px-3 py-2.5"><span className="inline-flex items-center gap-1.5 text-muted"><SourceIcon source={l.source} />{l.source === "meta" && l.campaign ? l.campaign : SOURCE_META[l.source].short}</span></td>}
                       {isFounder && <td className="px-3 py-2.5">{owners[l.owner_id ?? ""] ?? "—"}</td>}
-                      <td className="px-3 py-2.5 text-muted">{relative(l.last_activity_at)}</td>
+                      {!params.preview && <td className="px-3 py-2.5 text-muted">{relative(l.last_activity_at)}</td>}
                     </tr>
                   ))}
                 </tbody>

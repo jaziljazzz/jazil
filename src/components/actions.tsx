@@ -320,7 +320,7 @@ function LogCallSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () =>
         {outcome && outcome !== "wrong_number" && (
           <div className="space-y-2">
             <span className="text-[12px] font-medium text-muted">Move stage (optional)</span>
-            <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
+            <div className="flex flex-wrap gap-2">
               {stageOptions.map((s) => (
                 <Chip key={s} active={stage === s} onClick={() => setStage(stage === s ? null : s)}>{STAGE_META[s].label}</Chip>
               ))}
@@ -498,6 +498,13 @@ function WonSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () => voi
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof d, v: string) => setD((x) => ({ ...x, [k]: v }));
+  useEffect(() => {
+    // The lead on screen may be a moment old (e.g. right after moving to Negotiation), so read the saved unit.
+    supabaseBrowser().from("leads").select("selected_project,selected_unit").eq("id", lead.id).single()
+      .then(({ data }: { data: { selected_project: string | null; selected_unit: string | null } | null }) => {
+        if (data) setD((x) => ({ ...x, project: x.project || data.selected_project || "", unit: x.unit || data.selected_unit || "" }));
+      });
+  }, [lead.id]);
   const amount = Number(d.sale_value || 0) * Number(d.commission_pct || 0) / 100;
   const agents = team.filter((t) => t.active);
   const ok = d.project.trim() && d.sale_value && d.commission_pct !== "";

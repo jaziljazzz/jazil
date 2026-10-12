@@ -1,6 +1,7 @@
 "use client";
 
 import { BEDROOMS, MEETING_TYPES, PAYMENT_PLANS } from "@/lib/constants";
+import { useState } from "react";
 import type { Developer, MeetingType, Requirement, Stage } from "@/lib/types";
 import { Chip, Field, Input, Select } from "./ui";
 
@@ -52,10 +53,10 @@ export function RequirementFields({ value, onChange }: { value: StageForm["req"]
   return (
     <div className="grid grid-cols-2 gap-3">
       <Field label="Budget min (AED)">
-        <Input inputMode="numeric" value={value.budget_min ?? ""} onChange={(e) => set("budget_min", e.target.value ? Number(e.target.value.replace(/\D/g, "")) : null)} placeholder="800,000" />
+        <Input inputMode="numeric" value={value.budget_min ? Number(value.budget_min).toLocaleString("en-US") : ""} onChange={(e) => set("budget_min", e.target.value.replace(/\D/g, "") ? Number(e.target.value.replace(/\D/g, "")) : null)} placeholder="e.g. 800,000" />
       </Field>
       <Field label="Budget max (AED)">
-        <Input inputMode="numeric" value={value.budget_max ?? ""} onChange={(e) => set("budget_max", e.target.value ? Number(e.target.value.replace(/\D/g, "")) : null)} placeholder="1,500,000" />
+        <Input inputMode="numeric" value={value.budget_max ? Number(value.budget_max).toLocaleString("en-US") : ""} onChange={(e) => set("budget_max", e.target.value.replace(/\D/g, "") ? Number(e.target.value.replace(/\D/g, "")) : null)} placeholder="e.g. 1,500,000" />
       </Field>
       <Field label="Preferred area">
         <Input value={value.area ?? ""} onChange={(e) => set("area", e.target.value || null)} placeholder="JVC, Downtown…" />
@@ -109,12 +110,7 @@ export function StageFields({ stage, form, setForm, developers, lostReasons }: {
   lostReasons: string[];
 }) {
   if (stage === "contacted") {
-    return (
-      <div className="space-y-2">
-        <p className="text-[13px] font-medium">Requirement card {form.hasRequirement && <span className="text-success">· saved</span>}</p>
-        <RequirementFields value={form.req} onChange={(req) => setForm({ ...form, req })} />
-      </div>
-    );
+    return <ContactedFields form={form} setForm={setForm} />;
   }
   if (stage === "shortlisting") {
     if (form.hasUnits) return <p className="rounded-lg bg-success-50 px-3 py-2 text-[13px] text-success">Shortlisted units already added.</p>;
@@ -145,11 +141,11 @@ export function StageFields({ stage, form, setForm, developers, lostReasons }: {
             <Chip key={m.value} active={form.meeting_type === m.value} onClick={() => setForm({ ...form, meeting_type: m.value })}>{m.label}</Chip>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Date and time" required>
             <Input type="datetime-local" value={form.meeting_at} onChange={(e) => setForm({ ...form, meeting_at: e.target.value })} />
           </Field>
-          <Field label="Location / link"><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></Field>
+          <Field label="Location / link"><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Sales centre, Zoom link…" /></Field>
         </div>
       </div>
     );
@@ -175,4 +171,24 @@ export function StageFields({ stage, form, setForm, developers, lostReasons }: {
     );
   }
   return null;
+}
+
+function ContactedFields({ form, setForm }: { form: StageForm; setForm: (f: StageForm) => void }) {
+  const [edit, setEdit] = useState(false);
+  if (form.hasRequirement && !edit) {
+    const r = form.req;
+    const sum = [r.budget_max ? `up to AED ${Number(r.budget_max).toLocaleString("en-US")}` : null, r.bedrooms && `${r.bedrooms} BR`, r.area].filter(Boolean).join(" · ");
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-success-50 px-3 py-2.5 text-[13px]">
+        <span className="text-success">✓ Requirement card saved{sum ? ` · ${sum}` : ""}</span>
+        <button type="button" className="shrink-0 font-medium text-brand" onClick={() => setEdit(true)}>Edit</button>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-[13px] font-medium">Requirement card</p>
+      <RequirementFields value={form.req} onChange={(req) => setForm({ ...form, req })} />
+    </div>
+  );
 }

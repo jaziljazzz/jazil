@@ -68,7 +68,8 @@ export function TeamView({ team, openLeads }: { team: Profile[]; openLeads: Reco
           {!p.active && <Badge tone="danger">No access</Badge>}
           {p.on_leave && <Badge tone="warning">On leave</Badge>}
         </p>
-        <p className="break-all text-[12px] text-muted">{p.email}{p.phone ? ` · ${p.phone}` : ""} · {openLeads[p.id] ?? 0} open leads</p>
+        <p className="break-all text-[12px] text-muted">{p.email}{p.phone ? ` · ${p.phone}` : ""}</p>
+        <p className="text-[12px] text-muted">{openLeads[p.id] ?? 0} open leads</p>
       </div>
       <div className="flex w-full flex-wrap gap-1.5 pl-11 sm:w-auto sm:pl-0">
         {p.role === "agent" && p.active && (

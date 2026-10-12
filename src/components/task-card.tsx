@@ -2,7 +2,7 @@
 
 import { CalendarClock, CalendarDays, MoreVertical, Phone, PhoneCall, RotateCcw, User } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { dueInfo, fmtDate, fmtTime } from "@/lib/format";
 import type { Lead } from "@/lib/types";
 import { useActions } from "./actions";
@@ -13,6 +13,12 @@ import { cn, StageChip } from "./ui";
 export function TaskCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?: string; onLogged?: () => void }) {
   const { call, whatsapp, logCall, reschedule } = useActions();
   const [menu, setMenu] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
   const untouched = lead.stage === "new" && !lead.first_called_at && !lead.next_followup_at;
   const due = dueInfo(lead.next_followup_at);
   const status = untouched ? { t: "New lead", c: "text-info" } : due.tone === "overdue" ? { t: "Overdue", c: "text-danger" } : due.tone === "today" ? { t: "Due today", c: "text-warning" } : { t: "Upcoming", c: "text-muted" };
@@ -49,7 +55,7 @@ export function TaskCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
           </div>
           {when && (
             <div className="mt-2 flex items-center gap-4 text-[13px] text-ink/70">
-              <span className="flex items-center gap-1.5"><CalendarDays className="size-4 text-muted" />{fmtDate(when, { day: "numeric", month: "short", year: "2-digit" })}, {fmtTime(when)}</span>
+              <span className="flex items-center gap-1.5"><CalendarDays className="size-4 text-muted" />{untouched ? "Assigned " : "Due "}{fmtDate(when, { day: "numeric", month: "short", year: "2-digit" })}, {fmtTime(when)}</span>
               {lead.attempt_count > 0 && <span className="text-muted">Attempt {lead.attempt_count + 1}</span>}
             </div>
           )}

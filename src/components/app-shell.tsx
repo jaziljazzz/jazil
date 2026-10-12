@@ -108,7 +108,7 @@ export function AppShell({ profile, children, companyName }: { profile: Profile;
 
       <MobileNav profile={profile} unread={unread} />
 
-      <main className="min-w-0 flex-1 pb-[84px] md:pb-0">{children}</main>
+      <main className="min-w-0 flex-1 pb-[150px] md:pb-0">{children}</main>
 
     </div>
   );
