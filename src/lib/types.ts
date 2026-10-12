@@ -41,6 +41,7 @@ export interface Lead {
   email: string | null;
   nationality: string | null;
   is_nri: boolean;
+  preferred_language?: string | null;
   source: Source;
   batch_id: string | null;
   campaign: string | null;
@@ -76,6 +77,7 @@ export interface Requirement {
   handover_year: number | null;
   payment_plan: string | null;
   purpose: "end_use" | "investment" | null;
+  property_type?: string | null;
   notes: string | null;
 }
 

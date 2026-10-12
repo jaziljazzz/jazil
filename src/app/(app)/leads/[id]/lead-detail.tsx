@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, CalendarPlus, Handshake, MessageCircle, Phone, PhoneCall, StickyNote, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Star, CalendarPlus, Handshake, MessageCircle, Phone, PhoneCall, StickyNote, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,7 +9,7 @@ import { StagePath } from "@/components/stage-path";
 import { RequirementFields } from "@/components/stage-fields";
 import { Timeline } from "@/components/timeline";
 import { Badge, Button, Card, Chip, cn, ErrorText, Field, Input, Select, StageChip } from "@/components/ui";
-import { LeadAvatar } from "@/components/lead-card";
+import { LeadAvatar, WhatsAppIcon } from "@/components/lead-card";
 import { MEETING_LABEL, SOURCE_META } from "@/lib/constants";
 import { aed, dueInfo, errMsg, fmtDate, fmtDateTime, relative } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -87,8 +87,68 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
     </div>
   );
 
+  const followBtn = open && (
+    <button
+      onClick={() => (untouched ? a.logCall(lead) : a.reschedule(lead))}
+      className={cn("mt-3 flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[13px] font-medium",
+        untouched ? "bg-danger-50 text-danger" : due.tone === "overdue" ? "bg-danger-50 text-danger" : due.tone === "today" || due.tone === "none" ? "bg-warning-50 text-warning" : "bg-info-50 text-info")}
+    >
+      <span>{untouched ? "Phone Call Pending" : due.tone === "none" ? "No follow-up set" : `Follow up: ${due.label}`}</span>
+      <span className="text-[12px] font-normal opacity-80">{untouched ? "Log call" : "Change"}</span>
+    </button>
+  );
+
+  const mobileHeader = (
+    <div className="-mx-3 -mt-3 md:hidden">
+      <div className="h-20 bg-brand" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, rgba(255,255,255,.12) 0 18px, transparent 19px), radial-gradient(circle at 80% 60%, rgba(255,255,255,.10) 0 26px, transparent 27px), radial-gradient(circle at 55% 10%, rgba(255,255,255,.08) 0 14px, transparent 15px)" }} />
+      <div className="relative mx-3 -mt-12 rounded-2xl bg-surface px-4 pb-4 pt-10 shadow-[0_2px_10px_rgba(16,24,40,0.10)]">
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-full ring-4 ring-surface">
+          <LeadAvatar name={lead.name} solid className="size-16 text-[20px]" />
+        </div>
+        <button onClick={() => a.toggleStar(lead.id)} className="absolute right-2 top-2 grid size-9 place-items-center rounded-full active:bg-black/5" aria-label="Star">
+          <Star className={cn("size-[22px]", a.starred.has(lead.id) ? "fill-[#EAB308] text-[#EAB308]" : "text-ink/50")} />
+        </button>
+        <h1 className="break-words px-8 text-center text-[20px] font-semibold leading-snug">{lead.name}</h1>
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <div>
+            <StageChip stage={lead.stage} />
+            <p className="mt-1 text-[11px] text-muted">Lead Stage</p>
+          </div>
+          <div className="text-right">
+            <a href={`tel:${lead.phone}`} onClick={(e) => { e.preventDefault(); a.call(lead); }} className="tabular text-[15px] font-medium text-[#1d4f91]">{lead.phone}</a>
+            <p className="mt-0.5 text-[11px] text-muted">Phone Number</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-start justify-between gap-3 text-[13px]">
+          <div className="min-w-0">
+            <p className="break-words">{SOURCE_META[lead.source].label}{lead.campaign ? ` · ${lead.campaign}` : ""}</p>
+            <p className="text-[11px] text-muted">Lead Source</p>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="break-words">{lead.owner?.name ?? "—"}</p>
+            <p className="text-[11px] text-muted">Owner</p>
+          </div>
+        </div>
+        {(lead.sla_breached || lead.is_stale || lead.in_recycle_pool || lead.lost_reason) && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {lead.sla_breached && <Badge tone="danger">First call SLA missed</Badge>}
+            {lead.is_stale && <Badge tone="warning">Stale</Badge>}
+            {lead.in_recycle_pool && <Badge tone="warning">Recycle pool</Badge>}
+            {lead.lost_reason && <Badge tone="danger">{lead.lost_reason}</Badge>}
+          </div>
+        )}
+        {followBtn}
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <button onClick={() => a.call(lead)} className="grid h-11 place-items-center rounded-lg bg-brand-50 text-brand active:scale-95" aria-label="Call"><Phone className="size-5" /></button>
+          <button onClick={() => a.whatsapp(lead)} className="grid h-11 place-items-center rounded-lg bg-brand-50 text-brand active:scale-95" aria-label="WhatsApp"><WhatsAppIcon className="size-[22px]" /></button>
+          <button onClick={() => a.logCall(lead)} className="grid h-11 place-items-center rounded-lg bg-brand-50 text-brand active:scale-95" aria-label="Log call"><PhoneCall className="size-5" /></button>
+        </div>
+      </div>
+    </div>
+  );
+
   const composer = (
-    <div className="mb-4 flex gap-2">
+    <div className="mb-4 hidden gap-2 md:flex">
       <button onClick={() => a.logCall(lead)} className="h-11 min-w-0 flex-1 truncate rounded-lg border border-line bg-bg px-3 text-left text-[13px] text-muted hover:border-brand/40 md:h-10">Log a call, note or meeting…</button>
       <Chip onClick={() => a.logCall(lead)} className="hidden md:inline-flex">Call</Chip>
       <Chip onClick={() => a.addNote(lead)} className="hidden md:inline-flex">Note</Chip>
@@ -104,15 +164,18 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-3 pb-20 pt-3 md:px-6 md:py-6">
+    <div className="mx-auto max-w-7xl px-3 pb-6 pt-3 md:px-6 md:py-6">
       <button onClick={() => history.length > 1 ? history.back() : null} className="mb-3 hidden items-center gap-1 text-[13px] text-muted md:flex">
         <ArrowLeft className="size-4" /> Back
       </button>
       <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_300px]">
         {/* Left: header + actions */}
         <div className="min-w-0 space-y-3 md:space-y-4">
-          {header}
-          {actions}
+          <div className="hidden space-y-4 md:block">
+            {header}
+            {actions}
+          </div>
+          {mobileHeader}
           {open && (lead.stage === "meeting" || lead.stage === "negotiation") && (
             <Button variant="success" className="w-full" onClick={() => a.markWon(lead)}><Handshake className="size-4" /> Mark Won</Button>
           )}
@@ -149,12 +212,17 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
         <div className="hidden xl:block"><SidePanel lead={lead} meetings={meetings} deals={deals} /></div>
       </div>
 
-      {/* Phone: primary action pinned in thumb reach, above the tab bar */}
-      <div className="fixed inset-x-0 bottom-[62px] z-20 border-t border-line bg-surface/95 px-3 py-2 backdrop-blur md:hidden" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
-        <div className="flex gap-2">
-          <Button size="lg" className="flex-1" onClick={() => a.logCall(lead)}><PhoneCall className="size-4" /> Log call</Button>
-          {open && <Button variant="secondary" size="lg" className="shrink-0" onClick={() => a.reschedule(lead)}>Reschedule</Button>}
-        </div>
+      {/* Phone: LeadSquared-style action bar replaces the tab bar on the lead page */}
+      <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-line bg-surface md:hidden">
+        {[
+          { label: "Add Note", icon: StickyNote, onClick: () => a.addNote(lead) },
+          { label: "Log Call", icon: PhoneCall, onClick: () => a.logCall(lead) },
+          { label: "Add Meeting", icon: CalendarPlus, onClick: () => a.scheduleMeeting(lead) },
+        ].map((b) => (
+          <button key={b.label} onClick={b.onClick} className="flex h-[62px] flex-col items-center justify-center gap-1 text-[12px] text-ink/80 active:bg-black/5">
+            <b.icon className="size-[22px] text-ink/70" />{b.label}
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { aed, errMsg, waLink } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CallOutcome, Developer, Lead, Profile, Settings, Source, Stage } from "@/lib/types";
 import { FollowupPicker } from "./followup-picker";
+import { NewLeadForm } from "./new-lead-form";
 import { emptyStageForm, RequirementFields, stageNeedsFollowup, StageFields, validateStage, type StageForm } from "./stage-fields";
 import { Button, Chip, cn, ErrorText, Field, Input, Select, Sheet, Textarea } from "./ui";
 
@@ -218,7 +219,7 @@ export function ActionsProvider({ profile, settings, developers, team, children 
       {open?.kind === "note" && <NoteSheet lead={open.lead} onClose={close} onDone={() => done("Note added")} />}
       {open?.kind === "meeting" && <MeetingSheet lead={open.lead} onClose={close} onDone={() => done("Meeting scheduled")} />}
       {open?.kind === "won" && <WonSheet lead={open.lead} onClose={close} onDone={() => done("Deal booked 🎉")} />}
-      {open?.kind === "add" && <AddLeadSheet onClose={close} onDone={(id) => { setOpen(null); toast("Lead added"); router.push(`/leads/${id}`); }} />}
+      {open?.kind === "add" && <NewLeadForm profile={profile} isFounder={isFounder} team={team} onClose={close} onDone={(id) => { setOpen(null); toast("Lead added"); router.push(`/leads/${id}`); }} />}
       <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-4">
         {toasts.map((t) => (
           <div key={t.id} className={cn("animate-pop pointer-events-auto flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium text-white shadow-lg", t.tone === "success" ? "bg-ink" : "bg-danger")}>
@@ -553,112 +554,6 @@ function WonSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () => voi
         <Field label="Expected commission date"><Input type="date" value={d.expected_commission_date} onChange={(e) => set("expected_commission_date", e.target.value)} /></Field>
       </div>
       <div className="mt-3"><ErrorText>{error}</ErrorText></div>
-    </Sheet>
-  );
-}
-
-// ───────────────────────────── Add lead ─────────────────────────────
-const COUNTRY_CODES = ["+971", "+966", "+974", "+965", "+968", "+973", "+91", "+92", "+44", "+1", "+7", "+49", "+33", "+86", "+20", "+961", "+962"];
-
-function AddLeadSheet({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
-  const { isFounder, team } = useActions();
-  const [name, setName] = useState("");
-  const [cc, setCc] = useState("+971");
-  const [phone, setPhone] = useState("");
-  const [source, setSource] = useState<Source>("instagram");
-  const [owner, setOwner] = useState("");
-  const [note, setNote] = useState("");
-  const [email, setEmail] = useState("");
-  const [showReq, setShowReq] = useState(false);
-  const [req, setReq] = useState<StageForm["req"]>({});
-  const [dup, setDup] = useState<null | { exists: boolean; valid: boolean; mine?: boolean; lead_id?: string; owner_name?: string; stage?: Stage }>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const full = phone.trim().startsWith("+") ? phone.trim() : `${cc}${phone.replace(/^0+/, "")}`;
-  useEffect(() => {
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) { setDup(null); return; }
-    const t = setTimeout(async () => {
-      const { data } = await supabaseBrowser().rpc("check_phone", { p_phone: full });
-      setDup(data);
-    }, 350);
-    return () => clearTimeout(t);
-  }, [phone, full]);
-
-  async function save() {
-    setSaving(true);
-    setError(null);
-    try {
-      const sb = supabaseBrowser();
-      const { data, error } = await sb.rpc("add_lead", {
-        p_name: name, p_phone: full, p_source: source, p_email: email || null, p_note: note || null,
-        p_nationality: req.nationality || null, p_owner: isFounder && owner ? owner : null,
-      });
-      if (error) throw error;
-      if (data.status === "invalid") throw new Error("Phone number looks invalid");
-      if (showReq) {
-        const { nationality: _n, is_nri, ...r } = req;
-        if (Object.values(r).some((v) => v !== null && v !== undefined && v !== "")) {
-          await sb.from("requirements").upsert({ ...r, lead_id: data.lead_id }, { onConflict: "lead_id" });
-        }
-        if (is_nri) await sb.from("leads").update({ is_nri: true }).eq("id", data.lead_id);
-      }
-      onDone(data.lead_id);
-    } catch (e) {
-      setError(errMsg(e));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const blocked = dup?.exists;
-  return (
-    <Sheet open onClose={onClose} title="Add lead"
-      footer={<Button className="w-full" size="lg" disabled={!name.trim() || phone.replace(/\D/g, "").length < 7 || !!blocked} loading={saving} onClick={save}>Add lead</Button>}>
-      <div className="space-y-3">
-        <Field label="Name" required><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" /></Field>
-        <Field label="Phone" required>
-          <div className="flex gap-2">
-            <Select className="w-28 shrink-0" value={cc} onChange={(e) => setCc(e.target.value)}>
-              {COUNTRY_CODES.map((c) => <option key={c}>{c}</option>)}
-            </Select>
-            <Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="50 123 4567" />
-          </div>
-        </Field>
-        {dup?.exists && (
-          <div className="rounded-lg bg-warning-50 px-3 py-2 text-[13px] text-warning">
-            Already in the CRM{dup.owner_name ? ` · owned by ${dup.owner_name}` : ""} ({dup.stage && STAGE_META[dup.stage].label}).
-            {dup.mine && dup.lead_id && <a className="ml-1 font-medium underline" href={`/leads/${dup.lead_id}`}>Open lead</a>}
-          </div>
-        )}
-        {dup && !dup.valid && <p className="text-[12px] text-danger">Phone number looks invalid</p>}
-        <Field label="Source">
-          <div className="flex flex-wrap gap-2">
-            {(isFounder ? (["instagram", "bought", "meta"] as Source[]) : (["instagram"] as Source[])).map((s) => (
-              <Chip key={s} active={source === s} onClick={() => setSource(s)}>{s === "instagram" ? "Instagram / walk in" : SOURCE_META[s].label}</Chip>
-            ))}
-          </div>
-        </Field>
-        {isFounder && (
-          <Field label="Assign to" hint={source === "instagram" ? "Defaults to you" : "Defaults to round robin"}>
-            <Select value={owner} onChange={(e) => setOwner(e.target.value)}>
-              <option value="">{source === "instagram" ? "Me" : "Round robin"}</option>
-              {team.filter((t) => t.active).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </Select>
-          </Field>
-        )}
-        <Field label="Note"><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Where did they come from? What do they want?" /></Field>
-        {!showReq ? (
-          <button type="button" className="text-[13px] font-medium text-brand" onClick={() => setShowReq(true)}>+ Add requirement and email</button>
-        ) : (
-          <div className="space-y-3 rounded-xl border border-line p-3">
-            <Field label="Email"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-            <RequirementFields value={req} onChange={setReq} />
-          </div>
-        )}
-        <ErrorText>{error}</ErrorText>
-      </div>
     </Sheet>
   );
 }

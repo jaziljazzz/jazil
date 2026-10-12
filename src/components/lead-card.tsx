@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Camera as Instagram, ClipboardPen, Megaphone, Pencil, Phone, ShoppingBag, Star } from "lucide-react";
 import Link from "next/link";
+import { useRef, useState } from "react";
 import { aed, dueInfo } from "@/lib/format";
 import type { Lead, Requirement, Source } from "@/lib/types";
 import { useActions } from "./actions";
@@ -87,6 +88,7 @@ export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
   const details = [budget, SOURCE_SHORT[lead.source] + (lead.campaign && lead.source === "meta" ? ` · ${lead.campaign}` : ""), ownerName].filter(Boolean).join(" · ");
 
   return (
+    <Swipeable onRight={() => call(lead, onLogged)} onLeft={() => whatsapp(lead)}>
     <div className="rounded-2xl border border-line/70 bg-surface shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
       <div className="px-4 pt-3.5">
         <div className="flex items-center gap-3">
@@ -114,6 +116,48 @@ export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
         <button onClick={() => call(lead, onLogged)} className="grid h-12 place-items-center text-[#2B3990] active:bg-black/5" aria-label="Call"><Phone className="size-[22px]" /></button>
         <button onClick={() => whatsapp(lead)} className="grid h-12 place-items-center text-[#2B3990] active:bg-black/5" aria-label="WhatsApp"><WhatsAppIcon className="size-[23px]" /></button>
         <button onClick={() => logCall(lead, onLogged)} className="grid h-12 place-items-center text-[#2B3990] active:bg-black/5" aria-label="Log call"><ClipboardPen className="size-[22px]" /></button>
+      </div>
+    </div>
+    </Swipeable>
+  );
+}
+
+/** Swipe right → green Call, swipe left → orange Chat (LeadSquared style). Touch only; taps still work. */
+export function Swipeable({ children, onRight, onLeft }: { children: React.ReactNode; onRight: () => void; onLeft: () => void }) {
+  const [dx, setDx] = useState(0);
+  const st = useRef<{ x: number; y: number; on: boolean } | null>(null);
+  const moved = useRef(false);
+  const LIMIT = 110;
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      {dx !== 0 && (
+        <div className={cn("absolute inset-0 flex items-center px-6 text-[15px] font-semibold text-white", dx > 0 ? "justify-start bg-success" : "justify-end bg-[#F59E0B]")}>
+          {dx > 0
+            ? <span className="flex flex-col items-center gap-1"><Phone className="size-7" />Call</span>
+            : <span className="flex flex-col items-center gap-1"><WhatsAppIcon className="size-7" />Chat</span>}
+        </div>
+      )}
+      <div
+        className="relative touch-pan-y transition-transform duration-200"
+        style={{ transform: `translateX(${dx}px)`, transitionDuration: st.current?.on ? "0ms" : undefined }}
+        onPointerDown={(e) => { if (e.pointerType === "mouse") return; st.current = { x: e.clientX, y: e.clientY, on: false }; moved.current = false; }}
+        onPointerMove={(e) => {
+          const s = st.current;
+          if (!s) return;
+          const d = e.clientX - s.x;
+          if (!s.on && Math.abs(d) > 14 && Math.abs(d) > Math.abs(e.clientY - s.y) * 1.5) s.on = true;
+          if (s.on) { moved.current = true; setDx(Math.max(-LIMIT, Math.min(LIMIT, d))); }
+        }}
+        onPointerUp={() => {
+          if (dx > LIMIT * 0.75) onRight();
+          else if (dx < -LIMIT * 0.75) onLeft();
+          st.current = null;
+          setDx(0);
+        }}
+        onPointerCancel={() => { st.current = null; setDx(0); }}
+        onClickCapture={(e) => { if (moved.current) { e.preventDefault(); e.stopPropagation(); moved.current = false; } }}
+      >
+        {children}
       </div>
     </div>
   );

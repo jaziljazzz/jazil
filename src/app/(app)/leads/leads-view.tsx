@@ -128,7 +128,7 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
                     Filtered <X className="size-3.5" />
                   </Link>
                 )}
-                <span className="text-[13px] text-muted">{total} lead{total === 1 ? "" : "s"}</span>
+                <span className="flex items-center gap-1.5 text-[13px] text-ink/70"><span className="size-2.5 rounded-full bg-brand" />{total} Lead{total === 1 ? "" : "s"} found</span>
               </div>
               <button onClick={() => setSheet(true)} className="flex shrink-0 items-center gap-1 text-[13px] font-medium text-brand">
                 <SlidersHorizontal className="size-4" /> Sort & filter

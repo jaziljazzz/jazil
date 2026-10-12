@@ -94,8 +94,8 @@ export function MobileNav({ profile, unread }: { profile: Profile; unread: numbe
         </button>
       )}
 
-      {/* Bottom tabs */}
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface md:hidden">
+      {/* Bottom tabs (the lead page shows its own action bar instead) */}
+      {!path.startsWith("/leads/") && <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface md:hidden">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = path === href || path.startsWith(href + "/");
           return (
@@ -105,7 +105,7 @@ export function MobileNav({ profile, unread }: { profile: Profile; unread: numbe
             </Link>
           );
         })}
-      </nav>
+      </nav>}
 
       {drawer && <Drawer profile={profile} unread={unread} starredCount={starred.size} onClose={() => setDrawer(false)} />}
     </>
