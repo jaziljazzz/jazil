@@ -67,8 +67,18 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE, page * PAGE - 1);
 
-  const countQs = views.map((v) => applyFilters(applyView(supabase.from("leads").select("id", { count: "exact", head: true }), v.key)));
-  const [list, ...counts] = await Promise.all([listQ, ...countQs]);
+  const [list, countsRes] = await Promise.all([
+    listQ,
+    supabase.rpc("lead_view_counts", {
+      p_agent: isFounder && sp.agent ? sp.agent : null,
+      p_source: sp.source || null,
+      p_from: sp.from ? new Date(sp.from).toISOString() : null,
+      p_to: sp.to ? new Date(new Date(sp.to).getTime() + 86400000).toISOString() : null,
+      p_q: sp.q?.replace(/[%,()]/g, " ").trim() || null,
+      p_eod: eod,
+    }),
+  ]);
+  const counts = (countsRes.data ?? {}) as Record<string, number>;
 
   const preview = sp.preview ? <LeadPreview id={sp.preview} /> : null;
   const owners = Object.fromEntries(team.map((t) => [t.id, t.name]));
@@ -80,7 +90,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         total={list.count ?? 0}
         page={page}
         pageSize={PAGE}
-        views={views.map((v, i) => ({ ...v, count: counts[i]?.count ?? 0 }))}
+        views={views.map((v) => ({ ...v, count: counts[v.key] ?? 0 }))}
         current={view}
         params={sp}
         team={isFounder ? team.filter((t) => t.active) : []}
