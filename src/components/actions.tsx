@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { OUTCOMES, SOURCE_META, STAGE_META, STAGES } from "@/lib/constants";
 import { aed, errMsg, waLink } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { goExternal, openWhatsApp } from "@/lib/whatsapp";
 import type { CallOutcome, Developer, Lead, Profile, Settings, Source, Stage } from "@/lib/types";
 import { FollowupPicker } from "./followup-picker";
 import { NewLeadForm } from "./new-lead-form";
@@ -191,10 +192,10 @@ export function ActionsProvider({ profile, settings, developers, team, children 
       pendingRef.current = p;
       pendingCb.current = onSaved;
       try { sessionStorage.setItem("aventus.pendingCall", JSON.stringify(p)); } catch {}
-      window.location.href = `tel:${lead.phone}`;
+      goExternal(`tel:${lead.phone}`);
     },
     whatsapp: (lead) => {
-      window.open(waLink(lead.phone, `Hi ${lead.name.split(" ")[0]}, this is ${profile.name} from ${settings.company_name}.`), "_blank");
+      openWhatsApp(lead.phone, `Hi ${lead.name.split(" ")[0]}, this is ${profile.name} from ${settings.company_name}.`);
       supabaseBrowser().rpc("log_whatsapp", { p_lead: lead.id }).then(() => router.refresh());
     },
     logCall: (lead, onSaved) => setOpen({ kind: "call", lead, onSaved }),

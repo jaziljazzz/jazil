@@ -122,35 +122,46 @@ export function LeadCard({ lead, ownerName, onLogged }: { lead: Lead; ownerName?
   );
 }
 
-/** Swipe right → green Call, swipe left → orange Chat (LeadSquared style). Touch only; taps still work. */
+/** Swipe right → Call, swipe left → WhatsApp (Business). Touch only; taps still work. Vibrates when the action will fire. */
 export function Swipeable({ children, onRight, onLeft }: { children: React.ReactNode; onRight: () => void; onLeft: () => void }) {
-  const [dx, setDx] = useState(0);
-  const st = useRef<{ x: number; y: number; on: boolean } | null>(null);
+  const [dx, setDxState] = useState(0);
+  const dxRef = useRef(0);
+  const setDx = (v: number) => { dxRef.current = v; setDxState(v); };
+  const st = useRef<{ x: number; y: number; on: boolean; armed: boolean } | null>(null);
   const moved = useRef(false);
-  const LIMIT = 110;
+  const LIMIT = 120, FIRE = 72;
+  const armed = Math.abs(dx) >= FIRE;
   return (
     <div className="relative overflow-hidden rounded-2xl">
       {dx !== 0 && (
-        <div className={cn("absolute inset-0 flex items-center px-6 text-[15px] font-semibold text-white", dx > 0 ? "justify-start bg-success" : "justify-end bg-[#F59E0B]")}>
+        <div className={cn("absolute inset-0 flex items-center px-6 text-[15px] font-semibold text-white transition-colors",
+          dx > 0 ? (armed ? "justify-start bg-success" : "justify-start bg-success/60") : (armed ? "justify-end bg-[#128C7E]" : "justify-end bg-[#128C7E]/60"))}>
           {dx > 0
-            ? <span className="flex flex-col items-center gap-1"><Phone className="size-7" />Call</span>
-            : <span className="flex flex-col items-center gap-1"><WhatsAppIcon className="size-7" />Chat</span>}
+            ? <span className={cn("flex flex-col items-center gap-1 transition-transform", armed && "scale-110")}><Phone className="size-7" />Call</span>
+            : <span className={cn("flex flex-col items-center gap-1 transition-transform", armed && "scale-110")}><WhatsAppIcon className="size-7" />WhatsApp</span>}
         </div>
       )}
       <div
         className="relative touch-pan-y transition-transform duration-200"
         style={{ transform: `translateX(${dx}px)`, transitionDuration: st.current?.on ? "0ms" : undefined }}
-        onPointerDown={(e) => { if (e.pointerType === "mouse") return; st.current = { x: e.clientX, y: e.clientY, on: false }; moved.current = false; }}
+        onPointerDown={(e) => { if (e.pointerType === "mouse") return; st.current = { x: e.clientX, y: e.clientY, on: false, armed: false }; moved.current = false; }}
         onPointerMove={(e) => {
           const s = st.current;
           if (!s) return;
           const d = e.clientX - s.x;
-          if (!s.on && Math.abs(d) > 14 && Math.abs(d) > Math.abs(e.clientY - s.y) * 1.5) s.on = true;
-          if (s.on) { moved.current = true; setDx(Math.max(-LIMIT, Math.min(LIMIT, d))); }
+          if (!s.on && Math.abs(d) > 10 && Math.abs(d) > Math.abs(e.clientY - s.y) * 1.2) s.on = true;
+          if (!s.on) return;
+          moved.current = true;
+          const v = Math.max(-LIMIT, Math.min(LIMIT, d));
+          const nowArmed = Math.abs(v) >= FIRE;
+          if (nowArmed && !s.armed) { try { navigator.vibrate?.(15); } catch {} }
+          s.armed = nowArmed;
+          setDx(v);
         }}
         onPointerUp={() => {
-          if (dx > LIMIT * 0.75) onRight();
-          else if (dx < -LIMIT * 0.75) onLeft();
+          const d = dxRef.current;
+          if (d >= FIRE) onRight();
+          else if (d <= -FIRE) onLeft();
           st.current = null;
           setDx(0);
         }}

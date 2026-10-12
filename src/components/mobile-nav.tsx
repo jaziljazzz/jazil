@@ -11,6 +11,7 @@ import { STAGES, STAGE_META } from "@/lib/constants";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { endOfDay } from "@/lib/format";
 import type { Profile } from "@/lib/types";
+import { getWaApp, setWaApp, type WaApp } from "@/lib/whatsapp";
 import { useActions } from "./actions";
 import { Avatar, cn } from "./ui";
 
@@ -197,6 +198,8 @@ function Drawer({ profile, unread, starredCount, onClose }: { profile: Profile; 
             )}
           </div>
 
+          <WaChoice />
+
           <div className="mt-3 divide-y divide-line rounded-2xl bg-surface">
             <Link href="/notifications" className="flex items-center gap-3 px-4 py-3.5">
               <Bell className="size-5 text-ink/60" /><span className="flex-1 text-[14px]">Notifications</span>
@@ -211,6 +214,23 @@ function Drawer({ profile, unread, starredCount, onClose }: { profile: Profile; 
           </div>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function WaChoice() {
+  const [app, setApp] = useState<WaApp>("business");
+  useEffect(() => setApp(getWaApp()), []);
+  return (
+    <div className="mt-3 rounded-2xl bg-surface p-4">
+      <p className="text-[14px] font-medium">WhatsApp opens in</p>
+      <p className="text-[12px] text-muted">Used by the WhatsApp button and swipe left (this phone only)</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {([["business", "WhatsApp Business"], ["personal", "WhatsApp"]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => { setWaApp(k); setApp(k); }}
+            className={cn("h-10 rounded-lg text-[13px] font-medium", app === k ? "bg-[#128C7E] text-white" : "bg-bg text-ink/70")}>{label}</button>
+        ))}
+      </div>
     </div>
   );
 }
