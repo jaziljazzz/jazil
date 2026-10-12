@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Search, SlidersHorizontal, Users } from "lucide-react";
+import { Download, Search, SlidersHorizontal, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -22,6 +22,12 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
   const { isFounder } = useActions();
   const [q, setQ] = useState(params.q ?? "");
   const [showFilters, setShowFilters] = useState(!!(params.source || params.agent || params.from));
+  const [sheet, setSheet] = useState(false);
+  useEffect(() => {
+    const open = () => setSheet(true);
+    window.addEventListener("aventus:filters", open);
+    return () => window.removeEventListener("aventus:filters", open);
+  }, []);
 
   const href = (patch: Record<string, string | undefined>) => {
     const next = { ...params, ...patch };
@@ -80,23 +86,59 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
         ))}
       </nav>
 
-      <div className="min-w-0 flex-1 px-4 py-4 md:px-6 md:py-6">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h1 className="hidden text-[20px] font-semibold md:block">Leads</h1>
-          <p className="text-[13px] text-muted md:hidden">{views.find((v) => v.key === current)?.label} · {total}</p>
+      <div className="min-w-0 flex-1 px-3 py-3 md:px-6 md:py-6">
+        <div className="mb-3 hidden items-center justify-between gap-3 md:flex">
+          <h1 className="text-[20px] font-semibold">Leads</h1>
           <div className="flex items-center gap-2">
-            {isFounder && <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="size-4" /> <span className="hidden sm:inline">Export</span></Button>}
-            <Button variant="secondary" size="sm" onClick={() => setShowFilters((s) => !s)}><SlidersHorizontal className="size-4" /> <span className="hidden sm:inline">Filters</span></Button>
+            {isFounder && <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="size-4" /> Export</Button>}
+            <Button variant="secondary" size="sm" onClick={() => setShowFilters((s) => !s)}><SlidersHorizontal className="size-4" /> Filters</Button>
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative hidden md:block">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-          <Input id="lead-search" className="pl-9" placeholder="Search name, phone or email" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input id="lead-search" className="pl-9" placeholder="Search name, phone or email  ( / )" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
-        {/* Smart views (phone/tablet) */}
-        <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 lg:hidden">
+        {/* Phone: All / Starred like LeadSquared */}
+        <div className="grid grid-cols-2 gap-3 md:hidden">
+          {([["all", "All"], ["starred", "Starred"]] as const).map(([k, label]) => {
+            const active = k === "starred" ? current === "starred" : current !== "starred";
+            return (
+              <Link key={k} href={href({ view: k === "starred" ? "starred" : undefined, page: undefined })}
+                className={cn("grid h-12 place-items-center rounded-xl text-[15px] font-medium transition-colors", active ? "bg-brand text-white shadow-sm" : "bg-brand-50 text-brand")}>
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+        {(() => {
+          const v = views.find((x) => x.key === current);
+          const filtered = !!(params.source || params.agent || params.from || params.q);
+          return (
+            <div className="mt-3 flex items-center justify-between gap-2 px-1 md:hidden">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {current !== "open" && current !== "starred" && v && (
+                  <Link href={href({ view: undefined, page: undefined })} className="inline-flex h-7 items-center gap-1 rounded-full bg-brand-50 px-2.5 text-[12px] font-medium text-brand">
+                    {v.label} <X className="size-3.5" />
+                  </Link>
+                )}
+                {filtered && (
+                  <Link href={href({ source: undefined, agent: undefined, from: undefined, to: undefined, q: undefined, page: undefined })} className="inline-flex h-7 items-center gap-1 rounded-full bg-warning-50 px-2.5 text-[12px] font-medium text-warning">
+                    Filtered <X className="size-3.5" />
+                  </Link>
+                )}
+                <span className="text-[13px] text-muted">{total} lead{total === 1 ? "" : "s"}</span>
+              </div>
+              <button onClick={() => setSheet(true)} className="flex shrink-0 items-center gap-1 text-[13px] font-medium text-brand">
+                <SlidersHorizontal className="size-4" /> Sort & filter
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Smart views (tablet) */}
+        <div className="no-scrollbar -mx-4 mt-3 hidden gap-2 overflow-x-auto px-4 md:flex lg:hidden">
           {views.map((v) => (
             <Link key={v.key} href={href({ view: v.key, page: undefined })}>
               <Chip active={current === v.key} tone={v.count ? v.tone : undefined} count={v.count}>{v.label}</Chip>
@@ -105,7 +147,7 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
         </div>
 
         {showFilters && (
-          <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-3 md:grid-cols-4">
+          <div className="mt-3 hidden grid-cols-4 gap-2 rounded-xl border border-line bg-surface p-3 md:grid">
             <Select value={params.source ?? ""} onChange={(e) => router.replace(href({ source: e.target.value || undefined, page: undefined }))}>
               <option value="">All sources</option>
               {Object.entries(SOURCE_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -120,6 +162,7 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
             <Input type="date" value={params.to ?? ""} onChange={(e) => router.replace(href({ to: e.target.value || undefined, page: undefined }))} aria-label="Created to" />
           </div>
         )}
+        {sheet && <SortFilter params={params} views={views} team={isFounder ? team : []} onClose={() => setSheet(false)} onApply={(patch) => { setSheet(false); router.replace(href({ ...patch, page: undefined, preview: undefined })); }} />}
 
         <p className="mt-3 hidden text-[12px] text-muted md:block">{total} lead{total === 1 ? "" : "s"}</p>
 
@@ -128,7 +171,7 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
         ) : (
           <>
             {/* Phone: cards */}
-            <LeadList className="mt-2 md:hidden">
+            <LeadList className="mt-3 md:hidden">
               {leads.map((l) => <LeadCard key={l.id} lead={l} ownerName={isFounder && l.owner_id !== meId ? owners[l.owner_id ?? ""] : undefined} />)}
             </LeadList>
             {/* Desktop: dense table, row opens the preview panel */}
@@ -179,6 +222,81 @@ export function LeadsView({ leads, total, page, pageSize, views, current, params
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────── Sort and Filter (full screen, LeadSquared style) ─────────────────────────────
+const SORT_OPTIONS = [
+  ["followup", "Next follow-up (soonest first)"],
+  ["newest", "Newest leads"],
+  ["activity", "Recently active"],
+  ["name", "Name (A–Z)"],
+] as const;
+
+function SortFilter({ params, views, team, onClose, onApply }: {
+  params: Record<string, string | undefined>; views: View[]; team: Profile[];
+  onClose: () => void; onApply: (patch: Record<string, string | undefined>) => void;
+}) {
+  const [cat, setCat] = useState("sort");
+  const [f, setF] = useState({
+    sort: params.sort ?? "followup", view: params.view ?? "open", source: params.source ?? "", agent: params.agent ?? "", from: params.from ?? "", to: params.to ?? "",
+  });
+  const cats = [
+    ["sort", "Sort by"], ["view", "Lead Stage"], ["source", "Lead Source"], ...(team.length ? [["agent", "Owner"]] : []), ["date", "Created Date"],
+  ] as [string, string][];
+  const Radio = ({ on, label, sub, onClick }: { on: boolean; label: string; sub?: string | number; onClick: () => void }) => (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 border-b border-line px-4 py-4 text-left active:bg-bg">
+      <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", on ? "border-brand" : "border-brand/50")}>
+        {on && <span className="size-2.5 rounded-full bg-brand" />}
+      </span>
+      <span className={cn("flex-1 text-[15px]", on ? "font-medium text-ink" : "text-ink/75")}>{label}</span>
+      {sub !== undefined && <span className="tabular text-[13px] text-muted">{sub}</span>}
+    </button>
+  );
+  const isSet = (k: string) => (k === "sort" ? f.sort !== "followup" : k === "view" ? f.view !== "open" : k === "date" ? !!(f.from || f.to) : !!f[k as "source" | "agent"]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-surface md:hidden" role="dialog" aria-modal="true" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-line px-3">
+        <button onClick={onClose} className="grid size-11 place-items-center rounded-full active:bg-black/5" aria-label="Close"><X className="size-6" /></button>
+        <h2 className="text-[19px] font-medium">Sort and Filter</h2>
+      </div>
+      <div className="flex min-h-0 flex-1">
+        <div className="w-[38%] shrink-0 overflow-y-auto border-r border-line bg-bg">
+          {cats.map(([k, label]) => (
+            <button key={k} onClick={() => setCat(k)}
+              className={cn("relative flex w-full items-center justify-between border-b border-line px-4 py-5 text-left text-[15px]", cat === k ? "bg-surface font-medium text-brand" : "text-ink/80")}>
+              {label}
+              {isSet(k) && <span className="size-2 rounded-full bg-brand" />}
+              {cat === k && <span className="absolute inset-y-2 right-0 w-1 rounded-l bg-brand" />}
+            </button>
+          ))}
+        </div>
+        <div className="min-w-0 flex-1 overflow-y-auto">
+          {cat === "sort" && SORT_OPTIONS.map(([k, label]) => <Radio key={k} on={f.sort === k} label={label} onClick={() => setF({ ...f, sort: k })} />)}
+          {cat === "view" && views.map((v) => <Radio key={v.key} on={f.view === v.key} label={v.label} sub={v.count} onClick={() => setF({ ...f, view: v.key })} />)}
+          {cat === "source" && ([["", "All sources"], ...Object.entries(SOURCE_META).map(([k, v]) => [k, v.label])] as [string, string][]).map(([k, label]) => (
+            <Radio key={k} on={f.source === k} label={label} onClick={() => setF({ ...f, source: k })} />
+          ))}
+          {cat === "agent" && ([["", "All owners"], ...team.filter((t) => t.active).map((t) => [t.id, t.name])] as [string, string][]).map(([k, label]) => (
+            <Radio key={k} on={f.agent === k} label={label} onClick={() => setF({ ...f, agent: k })} />
+          ))}
+          {cat === "date" && (
+            <div className="space-y-4 p-4">
+              <label className="block space-y-1.5"><span className="text-[13px] text-muted">From</span><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></label>
+              <label className="block space-y-1.5"><span className="text-[13px] text-muted">To</span><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></label>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="safe-bottom flex shrink-0 gap-3 border-t border-line px-4 py-3">
+        <Button variant="secondary" size="lg" className="w-28" onClick={() => setF({ sort: "followup", view: "open", source: "", agent: "", from: "", to: "" })}>Reset</Button>
+        <Button size="lg" className="flex-1" onClick={() => onApply({
+          sort: f.sort === "followup" ? undefined : f.sort, view: f.view === "open" ? undefined : f.view,
+          source: f.source || undefined, agent: f.agent || undefined, from: f.from || undefined, to: f.to || undefined,
+        })}>Apply</Button>
       </div>
     </div>
   );

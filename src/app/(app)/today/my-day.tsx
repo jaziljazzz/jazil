@@ -102,7 +102,6 @@ export function MyDay({ greeting, date, overdue, today, untouched, team }: {
           ))
         )}
       </div>
-      <p className="mt-6 text-center text-[12px] text-muted md:hidden">Swipe a card right to log a call, left to reschedule.</p>
     </div>
   );
 }

@@ -40,5 +40,4 @@ export async function requireFounder() {
   return s;
 }
 
-export const LEAD_LIST_FIELDS =
-  "id,name,phone,source,stage,owner_id,next_followup_at,last_activity_at,first_called_at,assigned_at,attempt_count,sla_breached,is_stale,in_recycle_pool,needs_founder_attention,campaign,selected_project,selected_unit,lost_reason,created_at,batch_id,requirements(budget_min,budget_max,area,bedrooms)";
+export { LEAD_CARD_FIELDS as LEAD_LIST_FIELDS } from "./fields";

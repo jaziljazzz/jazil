@@ -9,7 +9,7 @@ import { LeadPreview } from "./preview";
 export const metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
 
-type Q = { view?: string; q?: string; source?: string; agent?: string; from?: string; to?: string; preview?: string; page?: string };
+type Q = { sort?: string; view?: string; q?: string; source?: string; agent?: string; from?: string; to?: string; preview?: string; page?: string };
 
 const PAGE = 50;
 
@@ -32,6 +32,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       case "stale": return q.eq("is_stale", true).not("stage", "in", "(won,lost)");
       case "sla": return q.eq("sla_breached", true);
       case "all": return q;
+      case "starred": return q.in("id", starIds.length ? starIds : ["00000000-0000-0000-0000-000000000000"]);
       default: return STAGES.includes(v as never) ? q.eq("stage", v) : q;
     }
   };
@@ -59,11 +60,18 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     { key: "sla", label: "SLA breached", tone: "danger" as const },
     ...STAGES.map((s) => ({ key: s, label: STAGE_META[s].label })),
     { key: "all", label: "Everything" },
+    { key: "starred", label: "Starred" },
   ];
 
+  const { data: stars } = await supabase.from("lead_stars").select("lead_id").eq("user_id", profile.id);
+  const starIds = (stars ?? []).map((r: { lead_id: string }) => r.lead_id);
+  const SORTS: Record<string, [string, boolean]> = {
+    followup: ["next_followup_at", true], newest: ["created_at", false], activity: ["last_activity_at", false], name: ["name", true],
+  };
+  const [sortCol, sortAsc] = SORTS[sp.sort ?? ""] ?? (view === "untouched" ? ["assigned_at", true] : ["next_followup_at", true]);
   const page = Math.max(1, Number(sp.page || 1));
   const listQ = applyFilters(applyView(supabase.from("leads").select(LEAD_LIST_FIELDS, { count: "exact" }), view))
-    .order(view === "untouched" ? "assigned_at" : "next_followup_at", { ascending: true, nullsFirst: false })
+    .order(sortCol, { ascending: sortAsc, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE, page * PAGE - 1);
 
@@ -90,7 +98,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         total={list.count ?? 0}
         page={page}
         pageSize={PAGE}
-        views={views.map((v) => ({ ...v, count: counts[v.key] ?? 0 }))}
+        views={views.map((v) => ({ ...v, count: v.key === "starred" ? starIds.length : counts[v.key] ?? 0 }))}
         current={view}
         params={sp}
         team={isFounder ? team.filter((t) => t.active) : []}

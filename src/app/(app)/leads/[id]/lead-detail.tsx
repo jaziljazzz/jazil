@@ -150,7 +150,7 @@ export function LeadDetail({ lead, requirement, units, activities, meetings, dea
       </div>
 
       {/* Phone: primary action pinned in thumb reach, above the tab bar */}
-      <div className="fixed inset-x-0 bottom-[60px] z-20 border-t border-line bg-surface/95 px-3 py-2 backdrop-blur md:hidden" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="fixed inset-x-0 bottom-[62px] z-20 border-t border-line bg-surface/95 px-3 py-2 backdrop-blur md:hidden" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         <div className="flex gap-2">
           <Button size="lg" className="flex-1" onClick={() => a.logCall(lead)}><PhoneCall className="size-4" /> Log call</Button>
           {open && <Button variant="secondary" size="lg" className="shrink-0" onClick={() => a.reschedule(lead)}>Reschedule</Button>}

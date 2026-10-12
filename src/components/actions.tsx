@@ -30,6 +30,8 @@ interface Ctx {
   scheduleMeeting: (lead: LeadRef) => void;
   markWon: (lead: LeadRef) => void;
   addLead: () => void;
+  starred: Set<string>;
+  toggleStar: (leadId: string) => void;
   toast: (text: string, tone?: "success" | "error") => void;
 }
 
@@ -128,6 +130,19 @@ export function ActionsProvider({ profile, settings, developers, team, children 
   const [open, setOpen] = useState<Open>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const isFounder = profile.role === "founder";
+  const [starred, setStarred] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    supabaseBrowser().from("lead_stars").select("lead_id").then(({ data }: { data: { lead_id: string }[] | null }) => setStarred(new Set((data ?? []).map((r) => r.lead_id))));
+  }, []);
+  const toggleStar = useCallback((leadId: string) => {
+    setStarred((prev) => {
+      const next = new Set(prev);
+      const sb = supabaseBrowser();
+      if (next.has(leadId)) { next.delete(leadId); sb.from("lead_stars").delete().eq("lead_id", leadId).eq("user_id", profile.id).then(() => {}); }
+      else { next.add(leadId); sb.from("lead_stars").insert({ lead_id: leadId }).then(() => {}); }
+      return next;
+    });
+  }, [profile.id]);
 
   const toast = useCallback((text: string, tone: "success" | "error" = "success") => {
     const id = Date.now() + Math.random();
@@ -191,7 +206,8 @@ export function ActionsProvider({ profile, settings, developers, team, children 
     scheduleMeeting: (lead) => setOpen({ kind: "meeting", lead }),
     markWon: (lead) => setOpen({ kind: "won", lead }),
     addLead: () => setOpen({ kind: "add" }),
-  }), [profile, isFounder, settings, developers, team, toast, router]);
+    starred, toggleStar,
+  }), [profile, isFounder, settings, developers, team, toast, router, starred, toggleStar]);
 
   return (
     <ActionsContext.Provider value={value}>
