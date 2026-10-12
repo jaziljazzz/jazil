@@ -15,15 +15,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await getSession();
-  const { data: lead } = await supabase.from("leads").select("*, owner:profiles!leads_owner_id_fkey(name), batch:lead_batches(name)").eq("id", id).maybeSingle();
-  if (!lead) notFound();
-  const [req, units, acts, meetings, deals] = await Promise.all([
+  // Everything is keyed by the lead id, so fetch it all in one parallel round.
+  const [{ data: lead }, req, units, acts, meetings, deals] = await Promise.all([
+    supabase.from("leads").select("*, owner:profiles!leads_owner_id_fkey(name), batch:lead_batches(name)").eq("id", id).maybeSingle(),
     supabase.from("requirements").select("*").eq("lead_id", id).maybeSingle(),
     supabase.from("shortlisted_units").select("*").eq("lead_id", id).order("created_at"),
     supabase.from("activities").select("*, user:profiles!activities_user_id_fkey(name)").eq("lead_id", id).order("created_at", { ascending: false }).limit(500),
     supabase.from("meetings").select("*").eq("lead_id", id).order("scheduled_at", { ascending: false }),
     supabase.from("deals").select("*, developer:developers(name), agent:profiles!deals_agent_id_fkey(name)").eq("lead_id", id).order("created_at", { ascending: false }),
   ]);
+  if (!lead) notFound();
   return (
     <LeadDetail
       lead={lead as Lead & { batch?: { name: string } | null }}
