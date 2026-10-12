@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Briefcase, CalendarCheck, Columns3, LayoutDashboard, LogOut, Plus, Recycle, Settings, Upload, Users, List } from "lucide-react";
+import { Bell, Plug, Briefcase, CalendarCheck, Columns3, LayoutDashboard, LogOut, Plus, Recycle, Settings, Upload, Users, List } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -24,6 +24,7 @@ const FOUNDER = [
   { href: "/recycle", label: "Recycle pool", icon: Recycle },
   { href: "/team", label: "Team", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings/integrations", label: "Integrations", icon: Plug },
 ];
 
 function useUnread(userId: string) {
@@ -51,7 +52,7 @@ export function AppShell({ profile, children, companyName }: { profile: Profile;
   const { addLead } = useActions();
   const unread = useUnread(profile.id);
   const founder = profile.role === "founder";
-  const isActive = (href: string) => path === href || path.startsWith(href + "/");
+  const isActive = (href: string) => path === href || (path.startsWith(href + "/") && !(href === "/settings" && path.startsWith("/settings/integrations")));
 
   const NavLink = ({ href, label, icon: Icon, badge }: { href: string; label: string; icon: typeof Bell; badge?: number }) => (
     <Link

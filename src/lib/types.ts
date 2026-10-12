@@ -31,6 +31,7 @@ export interface Settings {
   lost_reasons: string[];
   reject_reasons: string[];
   cadence_days: number[];
+  wa_templates?: { title: string; body: string }[];
 }
 
 export interface Lead {
@@ -189,4 +190,6 @@ export interface AgentMetrics {
   commission_earned: number;
   commission_received: number;
   avg_first_response_minutes: number | null;
+  calls_dialed: number;
+  call_seconds: number;
 }

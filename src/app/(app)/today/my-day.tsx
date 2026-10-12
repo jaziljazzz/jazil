@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LeadList } from "@/components/lead-card";
 import { TaskCard } from "@/components/task-card";
+import { PushBanner } from "@/components/push-toggle";
 import { useActions } from "@/components/actions";
 import { Button, Card, cn, EmptyState, StatCard } from "@/components/ui";
 import type { Lead } from "@/lib/types";
@@ -53,6 +54,8 @@ export function MyDay({ greeting, date, overdue, today, untouched, team }: {
         <StatCard label="Due today" value={today.length} tone="warning" onClick={() => toggle("today")} active={filter === "today"} />
         <StatCard label="Untouched" value={untouched.length} tone="info" onClick={() => toggle("untouched")} active={filter === "untouched"} />
       </div>
+
+      <PushBanner />
 
       {isFounder && team && (
         <Card className="mt-3 p-3">

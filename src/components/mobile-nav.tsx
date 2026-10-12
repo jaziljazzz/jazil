@@ -12,6 +12,8 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { endOfDay } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { getWaApp, setWaApp, type WaApp } from "@/lib/whatsapp";
+import { PushCard } from "./push-toggle";
+import { queuedCount } from "@/lib/offline";
 import { useActions } from "./actions";
 import { Avatar, cn } from "./ui";
 
@@ -82,6 +84,8 @@ export function MobileNav({ profile, unread }: { profile: Profile; unread: numbe
           )}
         </div>
       </header>
+
+      <SyncStrip />
 
       {/* Floating add lead */}
       {showFab && (
@@ -198,6 +202,7 @@ function Drawer({ profile, unread, starredCount, onClose }: { profile: Profile; 
             )}
           </div>
 
+          <PushCard className="mt-3" />
           <WaChoice />
 
           <div className="mt-3 divide-y divide-line rounded-2xl bg-surface">
@@ -231,6 +236,24 @@ function WaChoice() {
             className={cn("h-10 rounded-lg text-[13px] font-medium", app === k ? "bg-[#128C7E] text-white" : "bg-bg text-ink/70")}>{label}</button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Shows when the phone is offline or has changes waiting to sync. */
+function SyncStrip() {
+  const [online, setOnline] = useState(true);
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    const update = () => { setOnline(navigator.onLine); setPending(queuedCount()); };
+    update();
+    ["online", "offline", "aventus:queue"].forEach((e) => window.addEventListener(e, update));
+    return () => ["online", "offline", "aventus:queue"].forEach((e) => window.removeEventListener(e, update));
+  }, []);
+  if (online && !pending) return null;
+  return (
+    <div className={cn("sticky top-14 z-20 px-4 py-1.5 text-center text-[12px] font-medium md:hidden", online ? "bg-warning-50 text-warning" : "bg-ink text-white")}>
+      {online ? `Syncing ${pending} offline change${pending > 1 ? "s" : ""}…` : `You're offline${pending ? ` · ${pending} change${pending > 1 ? "s" : ""} will sync when back online` : " · calls and notes you log will sync later"}`}
     </div>
   );
 }

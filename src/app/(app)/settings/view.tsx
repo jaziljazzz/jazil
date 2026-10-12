@@ -1,6 +1,8 @@
 "use client";
 
-import { CheckCircle2, Circle, Plus, Trash2, X } from "lucide-react";
+import { ChevronRight, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { PushCard } from "@/components/push-toggle";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useActions } from "@/components/actions";
@@ -42,9 +44,8 @@ function ListEditor({ title, items, onSave }: { title: string; items: string[]; 
   );
 }
 
-export function SettingsView({ settings, developers, campaigns, welcome, meta }: {
+export function SettingsView({ settings, developers, campaigns, welcome }: {
   settings: Settings; developers: Developer[]; campaigns: { id: string; name: string; cost: number | null }[]; welcome: boolean;
-  meta: { webhookUrl: string; verifyToken: boolean; appSecret: boolean; pageToken: boolean; serviceKey: boolean };
 }) {
   const router = useRouter();
   const { toast } = useActions();
@@ -80,10 +81,6 @@ export function SettingsView({ settings, developers, campaigns, welcome, meta }:
     await sb.from("meta_campaigns").update({ cost: cost ? Number(cost) : null }).eq("id", id);
     router.refresh();
   }
-
-  const Step = ({ ok, children }: { ok: boolean; children: React.ReactNode }) => (
-    <li className="flex items-start gap-2">{ok ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" /> : <Circle className="mt-0.5 size-4 shrink-0 text-muted" />}<span>{children}</span></li>
-  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 md:px-8 md:py-8">
@@ -154,28 +151,55 @@ export function SettingsView({ settings, developers, campaigns, welcome, meta }:
       </Card>
 
       <Card className="p-4">
-        <SectionTitle>Meta Lead Ads connection</SectionTitle>
-        <ol className="space-y-1.5 text-[13px]">
-          <Step ok={meta.serviceKey}>SUPABASE_SERVICE_ROLE_KEY set in Vercel</Step>
-          <Step ok={meta.verifyToken}>META_VERIFY_TOKEN set in Vercel (any random string)</Step>
-          <Step ok={meta.pageToken}>META_PAGE_ACCESS_TOKEN set (Page token with leads_retrieval permission)</Step>
-          <Step ok={meta.appSecret}>META_APP_SECRET set (verifies Meta&apos;s signature)</Step>
-          <Step ok={false}>In Meta for Developers → Webhooks → Page → subscribe to <b>leadgen</b> with callback URL:</Step>
-        </ol>
-        <code className="mt-2 block overflow-x-auto rounded-lg bg-bg px-3 py-2 text-[12px]">{meta.webhookUrl}</code>
-        <p className="mt-2 text-[12px] text-muted">New Meta leads are created instantly, assigned by round robin and tagged with the campaign and ad name.</p>
-        {campaigns.length > 0 && (
-          <div className="mt-4">
-            <p className="mb-2 text-[13px] font-semibold">Campaign spend (for cost per deal)</p>
-            {campaigns.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-2 border-t border-line py-2 text-[13px]">
-                <span>{c.name}</span>
-                <Input className="w-36" placeholder="AED spent" defaultValue={c.cost ?? ""} onBlur={(e) => setCampaignCost(c.id, e.target.value)} title={c.cost ? aed(c.cost) : ""} />
-              </div>
-            ))}
-          </div>
-        )}
+        <SectionTitle>WhatsApp quick messages</SectionTitle>
+        <p className="mb-3 text-[12px] text-muted">Shown when an agent taps WhatsApp or swipes left. Use {"{name}"}, {"{agent}"} and {"{company}"} to fill in details.</p>
+        <TemplatesEditor initial={settings.wa_templates ?? []} onSave={(v) => saveSettings({ wa_templates: v })} />
       </Card>
+
+      <PushCard className="border border-line" />
+
+      <Link href="/settings/integrations" className="flex items-center justify-between rounded-[12px] border border-line bg-surface p-4">
+        <div>
+          <p className="text-[15px] font-semibold">Integrations</p>
+          <p className="text-[12px] text-muted">Meta Lead Ads, WhatsApp summaries</p>
+        </div>
+        <ChevronRight className="size-5 text-muted" />
+      </Link>
+
+      {campaigns.length > 0 && (
+        <Card className="p-4">
+          <SectionTitle>Meta campaign spend (for cost per deal)</SectionTitle>
+          {campaigns.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-2 border-t border-line py-2 text-[13px]">
+              <span>{c.name}</span>
+              <Input className="w-36" placeholder="AED spent" defaultValue={c.cost ?? ""} onBlur={(e) => setCampaignCost(c.id, e.target.value)} title={c.cost ? aed(c.cost) : ""} />
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function TemplatesEditor({ initial, onSave }: { initial: { title: string; body: string }[]; onSave: (v: { title: string; body: string }[]) => Promise<void> }) {
+  const [list, setList] = useState(initial);
+  const dirty = JSON.stringify(list) !== JSON.stringify(initial);
+  const set = (i: number, k: "title" | "body", v: string) => setList(list.map((t, j) => (j === i ? { ...t, [k]: v } : t)));
+  return (
+    <div className="space-y-3">
+      {list.map((t, i) => (
+        <div key={i} className="space-y-2 rounded-xl border border-line p-3">
+          <div className="flex gap-2">
+            <Input value={t.title} onChange={(e) => set(i, "title", e.target.value)} placeholder="Title" />
+            <button onClick={() => setList(list.filter((_, j) => j !== i))} className="grid size-9 shrink-0 place-items-center text-muted hover:text-danger" aria-label="Remove"><Trash2 className="size-4" /></button>
+          </div>
+          <textarea rows={3} value={t.body} onChange={(e) => set(i, "body", e.target.value)} className="w-full rounded-lg border border-line px-3 py-2 text-[14px] outline-none focus:border-brand" />
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={() => setList([...list, { title: "New message", body: "Hi {name}, " }])}><Plus className="size-4" /> Add message</Button>
+        {dirty && <Button onClick={() => onSave(list.filter((t) => t.title.trim() && t.body.trim()))}>Save messages</Button>}
+      </div>
     </div>
   );
 }

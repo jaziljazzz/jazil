@@ -1,12 +1,13 @@
 "use client";
 
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, PhoneCall } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { OUTCOMES, SOURCE_META, STAGE_META, STAGES } from "@/lib/constants";
 import { aed, errMsg, waLink } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { goExternal, openWhatsApp } from "@/lib/whatsapp";
+import { flushQueue, rpcOrQueue } from "@/lib/offline";
 import type { CallOutcome, Developer, Lead, Profile, Settings, Source, Stage } from "@/lib/types";
 import { FollowupPicker } from "./followup-picker";
 import { NewLeadForm } from "./new-lead-form";
@@ -45,7 +46,8 @@ export function useActions() {
 }
 
 type Open =
-  | { kind: "call"; lead: LeadRef; onSaved?: () => void }
+  | { kind: "call"; lead: LeadRef; onSaved?: () => void; dial?: Dial }
+  | { kind: "wa"; lead: LeadRef }
   | { kind: "stage"; lead: LeadRef; to: Stage; onSaved?: () => void }
   | { kind: "reschedule"; lead: LeadRef }
   | { kind: "note"; lead: LeadRef }
@@ -163,6 +165,13 @@ export function ActionsProvider({ profile, settings, developers, team, children 
   // Tap phone → dialer; when the agent comes back, the Log call sheet opens for that lead.
   const pendingRef = useRef<{ lead: LeadRef; at: number } | null>(null);
   const pendingCb = useRef<(() => void) | undefined>(undefined);
+  // A dial stays attached to the lead for 30 minutes, so closing and reopening Log call keeps it verified.
+  const lastDial = useRef<Record<string, Dial & { until: number }>>({});
+  const dialFor = (id: string) => {
+    const d = lastDial.current[id];
+    if (!d || d.until < Date.now()) return undefined;
+    return { dialed_at: d.dialed_at, seconds: d.seconds };
+  };
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("aventus.pendingCall");
@@ -173,7 +182,9 @@ export function ActionsProvider({ profile, settings, developers, team, children 
       if (document.visibilityState === "visible" && p && Date.now() - p.at > 2500) {
         pendingRef.current = null;
         try { sessionStorage.removeItem("aventus.pendingCall"); } catch {}
-        setOpen({ kind: "call", lead: p.lead, onSaved: pendingCb.current });
+        const dial = { dialed_at: new Date(p.at).toISOString(), seconds: Math.round((Date.now() - p.at) / 1000) };
+        lastDial.current[p.lead.id] = { ...dial, until: Date.now() + 30 * 60000 };
+        setOpen({ kind: "call", lead: p.lead, onSaved: pendingCb.current, dial });
         pendingCb.current = undefined;
       }
     };
@@ -185,6 +196,22 @@ export function ActionsProvider({ profile, settings, developers, team, children 
     };
   }, []);
 
+  const sendWhatsApp = useCallback((lead: LeadRef, text: string) => {
+    openWhatsApp(lead.phone, text);
+    rpcOrQueue("log_whatsapp", { p_lead: lead.id }, `WhatsApp · ${lead.name}`).then(() => router.refresh());
+  }, [router]);
+
+  // Send anything saved while offline as soon as the connection returns.
+  useEffect(() => {
+    const flush = () => flushQueue().then(({ sent, failed }) => {
+      if (sent) { toast(`Synced ${sent} offline change${sent > 1 ? "s" : ""}`); router.refresh(); }
+      failed.forEach((f) => toast(f, "error"));
+    });
+    flush();
+    window.addEventListener("online", flush);
+    return () => window.removeEventListener("online", flush);
+  }, [router, toast]);
+
   const value = useMemo<Ctx>(() => ({
     profile, isFounder, settings, developers, team, toast,
     call: (lead, onSaved) => {
@@ -195,10 +222,10 @@ export function ActionsProvider({ profile, settings, developers, team, children 
       goExternal(`tel:${lead.phone}`);
     },
     whatsapp: (lead) => {
-      openWhatsApp(lead.phone, `Hi ${lead.name.split(" ")[0]}, this is ${profile.name} from ${settings.company_name}.`);
-      supabaseBrowser().rpc("log_whatsapp", { p_lead: lead.id }).then(() => router.refresh());
+      if ((settings.wa_templates ?? []).length) { setOpen({ kind: "wa", lead }); return; }
+      sendWhatsApp(lead, `Hi ${lead.name.split(" ")[0]}, this is ${profile.name} from ${settings.company_name}.`);
     },
-    logCall: (lead, onSaved) => setOpen({ kind: "call", lead, onSaved }),
+    logCall: (lead, onSaved) => setOpen({ kind: "call", lead, onSaved, dial: dialFor(lead.id) }),
     changeStage: (lead, to, onSaved) => {
       if (to === "won") setOpen({ kind: "won", lead });
       else setOpen({ kind: "stage", lead, to, onSaved });
@@ -209,12 +236,13 @@ export function ActionsProvider({ profile, settings, developers, team, children 
     markWon: (lead) => setOpen({ kind: "won", lead }),
     addLead: () => setOpen({ kind: "add" }),
     starred, toggleStar,
-  }), [profile, isFounder, settings, developers, team, toast, router, starred, toggleStar]);
+  }), [profile, isFounder, settings, developers, team, toast, router, starred, toggleStar, sendWhatsApp]);
 
   return (
     <ActionsContext.Provider value={value}>
       {children}
-      {open?.kind === "call" && <LogCallSheet lead={open.lead} onClose={close} onDone={() => done("Call logged", open.onSaved)} />}
+      {open?.kind === "call" && <LogCallSheet lead={open.lead} dial={open.dial} onClose={close} onDone={(q) => { delete lastDial.current[open.lead.id]; done(q ? "Saved offline — will sync when online" : "Call logged", open.onSaved); }} />}
+      {open?.kind === "wa" && <WhatsAppSheet lead={open.lead} templates={settings.wa_templates ?? []} agent={profile.name} company={settings.company_name} onClose={close} onSend={(t) => { setOpen(null); sendWhatsApp(open.lead, t); }} />}
       {open?.kind === "stage" && <StageSheet lead={open.lead} to={open.to} onClose={close} onDone={() => done(`Moved to ${STAGE_META[open.to].label}`, open.onSaved)} />}
       {open?.kind === "reschedule" && <RescheduleSheet lead={open.lead} onClose={close} onDone={() => done("Follow up rescheduled")} />}
       {open?.kind === "note" && <NoteSheet lead={open.lead} onClose={close} onDone={() => done("Note added")} />}
@@ -234,7 +262,13 @@ export function ActionsProvider({ profile, settings, developers, team, children 
 }
 
 // ───────────────────────────── Log call ─────────────────────────────
-function LogCallSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () => void; onDone: () => void }) {
+type Dial = { dialed_at: string; seconds: number };
+function fmtDur(s: number) {
+  const m = Math.floor(s / 60), r = s % 60;
+  return m ? `${m}m ${String(r).padStart(2, "0")}s` : `${r}s`;
+}
+
+function LogCallSheet({ lead, onClose, onDone, dial }: { lead: LeadRef; onClose: () => void; onDone: (queued: boolean) => void; dial?: Dial }) {
   const { settings, developers } = useActions();
   const [outcome, setOutcome] = useState<CallOutcome | null>(null);
   const [note, setNote] = useState("");
@@ -263,16 +297,17 @@ function LogCallSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () =>
     try {
       const sb = supabaseBrowser();
       const p_data = stage ? await prepareStage(lead.id, stage, form) : {};
-      const { error } = await sb.rpc("log_call", {
+      const { error, queued } = await rpcOrQueue("log_call", {
         p_lead: lead.id,
         p_outcome: outcome,
         p_note: note || null,
         p_next: next?.toISOString() ?? null,
         p_stage: outcome === "wrong_number" ? null : stage,
         p_data,
-      });
+        p_dial: dial ?? null,
+      }, `Call · ${lead.name}`);
       if (error) throw error;
-      onDone();
+      onDone(queued);
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -292,6 +327,13 @@ function LogCallSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () =>
       }
     >
       <div className="space-y-4">
+        {dial ? (
+          <p className="flex items-center gap-2 rounded-lg bg-success-50 px-3 py-2 text-[13px] font-medium text-success">
+            <PhoneCall className="size-4" /> Dialed from CRM · {fmtDur(dial.seconds)} in the dialer
+          </p>
+        ) : (
+          <p className="rounded-lg bg-bg px-3 py-2 text-[12px] text-muted">Not dialed from the CRM. Tap Call first so the call counts as verified.</p>
+        )}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {OUTCOMES.map((o) => (
             <button
@@ -408,7 +450,7 @@ function RescheduleSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: ()
   const [error, setError] = useState<string | null>(null);
   async function save() {
     setSaving(true);
-    const { error } = await supabaseBrowser().rpc("set_followup", { p_lead: lead.id, p_next: next!.toISOString(), p_note: note || null });
+    const { error } = await rpcOrQueue("set_followup", { p_lead: lead.id, p_next: next!.toISOString(), p_note: note || null }, `Follow up · ${lead.name}`);
     setSaving(false);
     if (error) setError(error.message); else onDone();
   }
@@ -430,7 +472,7 @@ function NoteSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () => vo
   const [error, setError] = useState<string | null>(null);
   async function save() {
     setSaving(true);
-    const { error } = await supabaseBrowser().rpc("add_note", { p_lead: lead.id, p_note: note });
+    const { error } = await rpcOrQueue("add_note", { p_lead: lead.id, p_note: note }, `Note · ${lead.name}`);
     setSaving(false);
     if (error) setError(error.message); else onDone();
   }
@@ -562,6 +604,35 @@ function WonSheet({ lead, onClose, onDone }: { lead: LeadRef; onClose: () => voi
         <Field label="Expected commission date"><Input type="date" value={d.expected_commission_date} onChange={(e) => set("expected_commission_date", e.target.value)} /></Field>
       </div>
       <div className="mt-3"><ErrorText>{error}</ErrorText></div>
+    </Sheet>
+  );
+}
+
+// ───────────────────────────── WhatsApp templates ─────────────────────────────
+function fillTemplate(body: string, lead: LeadRef, agent: string, company: string) {
+  return body.replaceAll("{name}", lead.name.split(" ")[0] ?? lead.name).replaceAll("{fullname}", lead.name)
+    .replaceAll("{agent}", agent).replaceAll("{company}", company);
+}
+
+function WhatsAppSheet({ lead, templates, agent, company, onClose, onSend }: {
+  lead: LeadRef; templates: { title: string; body: string }[]; agent: string; company: string; onClose: () => void; onSend: (text: string) => void;
+}) {
+  return (
+    <Sheet open onClose={onClose} title={<>WhatsApp · <span className="font-normal text-muted">{lead.name}</span></>}>
+      <div className="space-y-2 pb-2">
+        {templates.map((t) => {
+          const text = fillTemplate(t.body, lead, agent, company);
+          return (
+            <button key={t.title} onClick={() => onSend(text)} className="block w-full rounded-xl border border-line p-3 text-left active:bg-bg">
+              <p className="text-[14px] font-semibold text-[#128C7E]">{t.title}</p>
+              <p className="mt-0.5 line-clamp-3 text-[13px] text-ink/75">{text}</p>
+            </button>
+          );
+        })}
+        <button onClick={() => onSend("")} className="block w-full rounded-xl border border-dashed border-line p-3 text-left text-[14px] font-medium text-muted active:bg-bg">
+          Blank message
+        </button>
+      </div>
     </Sheet>
   );
 }

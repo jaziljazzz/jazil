@@ -1,5 +1,5 @@
-// Aventus CRM service worker: network first, cached My Day + lead pages for offline viewing.
-const CACHE = "aventus-v1";
+// Aventus CRM service worker: push notifications + network-first pages with offline fallback.
+const CACHE = "aventus-v2";
 const OFFLINE = "/offline";
 
 self.addEventListener("install", (e) => {
@@ -7,6 +7,30 @@ self.addEventListener("install", (e) => {
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { title: "Aventus CRM", body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Aventus CRM", {
+    body: d.body || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: d.tag,
+    renotify: !!d.tag,
+    data: { url: d.url || "/today" },
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/today";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+    for (const c of list) {
+      if ("focus" in c) { c.navigate(url).catch(() => {}); return c.focus(); }
+    }
+    return self.clients.openWindow(url);
+  }));
 });
 
 self.addEventListener("fetch", (e) => {
@@ -19,7 +43,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok && (url.pathname === "/today" || url.pathname.startsWith("/leads/"))) {
+          if (res.ok && (url.pathname === "/today" || url.pathname === "/leads" || url.pathname.startsWith("/leads/"))) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));
           }

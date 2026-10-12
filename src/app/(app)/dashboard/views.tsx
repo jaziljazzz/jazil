@@ -33,6 +33,7 @@ function DateFilter({ preset, params }: { preset: string; params: Record<string,
 }
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
+const hm = (sec: number) => { const s = Number(sec || 0); if (s < 60) return `${s}s`; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; };
 const mins = (m: number | null) => (m === null || m === undefined || Number(m) < 0 ? "—" : m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(1)}h`);
 
 export function FounderDashboard({ preset, label, params, rows, teamOverdue, funnel, sources, commission, rejections, overdueDeals, recycleCount, slaToday }: {
@@ -55,7 +56,7 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
         <StatCard label="Leads in" value={num(sum("leads_assigned"))} />
-        <StatCard label="Contacted" value={num(sum("contacted"))} sub={`${num(sum("calls"))} calls`} />
+        <StatCard label="Contacted" value={num(sum("contacted"))} sub={`${num(sum("calls"))} calls · ${pct(sum("calls_dialed"), sum("calls"))} dialed`} />
         <StatCard label="Overdue (team, now)" value={num(teamOverdue)} tone={teamOverdue ? "danger" : "success"} href="/leads?view=overdue" />
         <StatCard label="Units sold" value={num(sum("units_sold"))} />
         <StatCard label="Commission earned" value={aed(sum("commission_earned"), true)} tone="success" />
@@ -75,7 +76,7 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
                 </div>
                 <div className="mt-2 grid grid-cols-4 gap-2 text-center text-[11px] text-muted">
                   <div><div className="tabular text-[15px] font-semibold text-ink">{r.leads_assigned}</div>Leads</div>
-                  <div><div className="tabular text-[15px] font-semibold text-ink">{r.calls}</div>Calls</div>
+                  <div><div className="tabular text-[15px] font-semibold text-ink">{r.calls}</div>Calls · {pct(Number(r.calls_dialed), Number(r.calls))} dialed</div>
                   <div><div className="tabular text-[15px] font-semibold text-ink">{r.units_sold}</div>Sold</div>
                   <div><div className="tabular text-[15px] font-semibold text-ink">{aed(r.commission_earned, true).replace("AED ", "")}</div>Comm.</div>
                 </div>
@@ -87,7 +88,7 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
           <table className="w-full whitespace-nowrap text-[13px]">
             <thead className="border-b border-line bg-bg/60 text-left text-[12px] text-muted">
               <tr>
-                {["Agent", "Leads", "Contacted", "Calls (conn / not)", "Follow ups done / due", "Overdue", "Untouched", "Meetings", "Sold", "Sale value", "Comm. earned", "Comm. received", "Conversion", "1st response"].map((h) => (
+                {["Agent", "Leads", "Contacted", "Calls (conn / not)", "Dialed from CRM", "Dialer time", "Follow ups done / due", "Overdue", "Untouched", "Meetings", "Sold", "Sale value", "Comm. earned", "Comm. received", "Conversion", "1st response"].map((h) => (
                   <th key={h} className="px-3 py-2 font-medium">{h}</th>
                 ))}
               </tr>
@@ -99,6 +100,8 @@ export function FounderDashboard({ preset, label, params, rows, teamOverdue, fun
                   <td className="px-3 py-2.5">{r.leads_assigned}</td>
                   <td className="px-3 py-2.5">{r.contacted}</td>
                   <td className="px-3 py-2.5">{r.calls} <span className="text-muted">({r.calls_connected} / {Number(r.calls) - Number(r.calls_connected)})</span></td>
+                  <td className={cn("px-3 py-2.5", Number(r.calls) && Number(r.calls_dialed) / Number(r.calls) < 0.7 ? "text-warning" : "")}>{r.calls_dialed} <span className="text-muted">({pct(Number(r.calls_dialed), Number(r.calls))})</span></td>
+                  <td className="px-3 py-2.5">{hm(r.call_seconds)}</td>
                   <td className="px-3 py-2.5">{r.followups_done} / {r.followups_due}</td>
                   <td className={cn("px-3 py-2.5 font-semibold", Number(r.overdue) ? "bg-danger-50 text-danger" : "text-success")}>{r.overdue}</td>
                   <td className={cn("px-3 py-2.5", Number(r.untouched) > 0 && "text-info")}>{r.untouched}</td>
@@ -204,7 +207,7 @@ export function AgentDashboard({ name, isFounderView, preset, label, params, me,
         <StatCard label="Untouched" value={myDay.untouched} tone="info" href={isFounderView ? undefined : "/today"} />
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        <StatCard label={`Calls · ${label}`} value={me?.calls ?? 0} sub={`${me?.calls_connected ?? 0} connected`} />
+        <StatCard label={`Calls · ${label}`} value={me?.calls ?? 0} sub={`${me?.calls_connected ?? 0} connected · ${me?.calls_dialed ?? 0} dialed · ${hm(me?.call_seconds ?? 0)}`} />
         <StatCard label={`Contacted · ${label}`} value={me?.contacted ?? 0} />
         <StatCard label="Meetings this week" value={myDay.meetingsWeek} />
         <StatCard label={`Leads in · ${label}`} value={me?.leads_assigned ?? 0} />

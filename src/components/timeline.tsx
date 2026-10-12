@@ -86,6 +86,11 @@ export function Timeline({ activities, compact }: { activities: Activity[]; comp
                     <div className="text-[13px] font-medium">{title(a)}</div>
                     {showNote && a.type !== "system" && <p className="mt-0.5 whitespace-pre-wrap text-[13px] text-ink/80">{a.note}</p>}
                     {a.type === "system" && a.note && <p className="mt-0.5 text-[13px] text-ink/80">{a.note}</p>}
+                    {a.type === "call" && a.meta && "dialed" in a.meta && (
+                      a.meta.dialed
+                        ? <p className="mt-0.5 text-[12px] font-medium text-success">✓ Dialed from CRM · {Math.floor(Number(a.meta.dial_seconds) / 60)}m {String(Number(a.meta.dial_seconds) % 60).padStart(2, "0")}s</p>
+                        : <p className="mt-0.5 text-[12px] text-muted">Logged without dialing from CRM</p>
+                    )}
                     {a.next_followup_at && <p className="mt-0.5 text-[12px] text-muted">Next follow up: {fmtDateTime(a.next_followup_at)}</p>}
                     {a.type === "stage_change" && a.meta?.meeting_type ? (
                       <p className="mt-0.5 text-[12px] text-muted">{MEETING_LABEL[a.meta.meeting_type as MeetingType]}{a.meta.meeting_at ? ` · ${fmtDateTime(a.meta.meeting_at as string)}` : ""}</p>
